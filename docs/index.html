@@ -231,8 +231,8 @@
     <div class="body">
       <h2 id="spendListTitle">ポイント履歴</h2>
       <div aria-label="ポイント履歴の表示切り替え" class="seg list-filters" id="spendListFilters" role="tablist">
-        <button aria-pressed="false" class="btn" data-history-filter="all">全て</button>
-        <button aria-pressed="true" class="btn" data-history-filter="spend">消費</button>
+        <button aria-pressed="true" class="btn" data-history-filter="all">すべて</button>
+        <button aria-pressed="false" class="btn" data-history-filter="spend">消費</button>
         <button aria-pressed="false" class="btn" data-history-filter="earn">追加</button>
       </div>
       <div class="hint" id="spendNote" style="display:none; margin-bottom:12px"></div>
@@ -355,7 +355,7 @@
   const clearPointsCancel = $('#clearPointsCancel');
   const clearPointsConfirm = $('#clearPointsConfirm');
   let filter = 'all';
-  let spendHistoryFilter = 'spend';
+  let spendHistoryFilter = 'all';
 
   // 表示・保存の上限（必要に応じて調整可）
   const SPEND_LIST_LIMIT = 200;   // 画面に表示する消費履歴の最大件数（新しい順）
@@ -947,7 +947,7 @@
 
   function renderSpendList(){
     spendListFilterButtons.forEach(btn=>{
-      const target = btn.dataset.historyFilter || 'spend';
+      const target = btn.dataset.historyFilter || 'all';
       btn.setAttribute('aria-pressed', String(target === spendHistoryFilter));
     });
     const meta = ensureUserMeta();
@@ -1051,7 +1051,7 @@
 
   spendListFilterButtons.forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const next = btn.dataset.historyFilter || 'spend';
+      const next = btn.dataset.historyFilter || 'all';
       if(spendHistoryFilter === next) return;
       spendHistoryFilter = next;
       renderSpendList();
