@@ -225,13 +225,22 @@
 </div>
 </section>
 <!-- Spend history list (under the action list) -->
-<section aria-labelledby="spendListTitle" class="card fade-in">
-<div class="body">
-<h2 id="spendListTitle">消費リスト</h2>
-<div class="list" id="spendList"></div>
-<div class="empty" id="spendEmpty">消費履歴がありません。上の「ポイントを消費」から追加してください。</div>
-</div>
-</section>
+  <section aria-labelledby="spendListTitle" class="card fade-in">
+    <div class="body">
+      <h2 id="spendListTitle">消費リスト</h2>
+      <div class="list" id="spendList"></div>
+      <div class="empty" id="spendEmpty">消費履歴がありません。上の「ポイントを消費」から追加してください。</div>
+    </div>
+  </section>
+  <!-- Activity log -->
+  <section aria-labelledby="activityLogTitle" class="card fade-in">
+    <div class="body">
+      <h2 id="activityLogTitle">ログ</h2>
+      <p class="hint" id="activityLogNote">直近3日分の操作ログを表示します。</p>
+      <div class="list" id="activityLogList"></div>
+      <div class="empty" id="activityLogEmpty">ログがまだありません。ポイント獲得・消費や行動／ご褒美の追加・削除を行うと表示されます。</div>
+    </div>
+  </section>
 </div>
 </main>
 <!-- Login Modal -->
@@ -337,6 +346,8 @@
   const rewardsListEl = $('#rewardsList');
   const rewardsEmptyEl = $('#rewardsEmpty');
   const rewardSelect = $('#rewardSelect');
+  const activityLogListEl = $('#activityLogList');
+  const activityLogEmptyEl = $('#activityLogEmpty');
   const clearPointsBtn = $('#clearPointsBtn');
   const clearPointsModal = $('#clearPointsModal');
   const clearPointsBalanceEl = $('#clearPointsBalance');
@@ -347,6 +358,8 @@
   // 表示・保存の上限（必要に応じて調整可）
   const SPEND_LIST_LIMIT = 200;   // 画面に表示する消費履歴の最大件数（新しい順）
   const SPEND_LOG_MAX   = 500;   // 保存しておく最大件数（超えたら古い順に自動削除）
+  const ACTIVITY_LOG_MAX = 500;  // 保存しておく操作ログの最大件数
+  const LOG_RETENTION_MS = 3 * 24 * 60 * 60 * 1000; // 3日分保持
 
   const STORE_KEY = 'behavior-tracker-v4';
   const LEGACY_KEYS = ['behavior-tracker-v3','behavior-tracker-v2','behavior-tracker-v1'];
@@ -634,6 +647,7 @@
     if(!Array.isArray(meta.spendLog)) meta.spendLog = [];
     if(typeof meta.earned !== 'number') meta.earned = 0;
     if(!Array.isArray(meta.rewards)) meta.rewards = [];
+    if(!Array.isArray(meta.activityLog)) meta.activityLog = [];
     return meta;
   }
   function save(){
@@ -667,8 +681,75 @@
     meta.earned = 0;
     meta.spent = 0;
     meta.spendLog = [];
+    meta.activityLog = [];
     save();
     render();
+  }
+
+  function purgeActivityLogs(logs){
+    const cutoff = Date.now() - LOG_RETENTION_MS;
+    return (logs||[]).filter(log=> Number(log.at) >= cutoff);
+  }
+
+  function activityLogLabel(kind){
+    switch(kind){
+      case 'earn': return '獲得';
+      case 'earn-undo': return '獲得取消';
+      case 'spend': return '消費';
+      case 'spend-undo': return '消費取消';
+      case 'task-add': return '行動追加';
+      case 'task-del': return '行動削除';
+      case 'reward-add': return 'ご褒美追加';
+      case 'reward-del': return 'ご褒美削除';
+      default: return 'ログ';
+    }
+  }
+
+  function addActivityLog(kind, message){
+    const meta = ensureUserMeta(); if(!meta) return;
+    meta.activityLog = purgeActivityLogs(meta.activityLog||[]);
+    meta.activityLog.push({ id: uid(), kind, message: String(message||''), at: Date.now() });
+    if(meta.activityLog.length > ACTIVITY_LOG_MAX){
+      meta.activityLog.splice(0, meta.activityLog.length - ACTIVITY_LOG_MAX);
+    }
+    saveStore();
+    renderActivityLog();
+  }
+
+  function renderActivityLog(){
+    if(!activityLogListEl || !activityLogEmptyEl){ return; }
+    const meta = ensureUserMeta();
+    if(!meta){
+      activityLogListEl.innerHTML = '';
+      activityLogEmptyEl.style.display = 'block';
+      return;
+    }
+    let logs = Array.isArray(meta.activityLog) ? meta.activityLog : [];
+    const filtered = purgeActivityLogs(logs);
+    if(filtered.length !== logs.length){
+      meta.activityLog = filtered;
+      saveStore();
+    }
+    logs = filtered.slice().sort((a,b)=> b.at - a.at);
+    activityLogListEl.innerHTML = '';
+    if(!logs.length){
+      activityLogEmptyEl.style.display = 'block';
+      return;
+    }
+    activityLogEmptyEl.style.display = 'none';
+    logs.forEach(log=>{
+      const el = document.createElement('article');
+      el.className = 'item fade-in';
+      const label = activityLogLabel(log.kind);
+      el.innerHTML = `
+        <div class="item-head">
+          <span class="badge">${escapeHtml(label)}</span>
+          <div class="title">${escapeHtml(log.message||'')}</div>
+          <div class="spacer"></div>
+          <div class="date">${escapeHtml(fmtTs(log.at))}</div>
+        </div>`;
+      activityLogListEl.appendChild(el);
+    });
   }
 
   function renderSpendLog(){
@@ -699,6 +780,7 @@
     renderRewards();
     renderSpendLog();
     renderSpendList();
+    renderActivityLog();
   }
 
   function renderItem(item){
@@ -741,6 +823,9 @@
       it.completedCount = current + 1;
       it.done = true;
       it.doneAt = Date.now();
+      const gainDiff = Number(it.difficulty)||0;
+      const gainTitle = it && it.title ? it.title : '名称未設定';
+      addActivityLog('earn', `ポイント獲得：「${gainTitle}」 (+${gainDiff}pt)`);
       save(); render();
       return;
     }
@@ -754,6 +839,9 @@
         it.done = false;
         delete it.doneAt;
       }
+      const undoDiff = Number(it.difficulty)||0;
+      const undoTitle = it && it.title ? it.title : '名称未設定';
+      addActivityLog('earn-undo', `達成を取り消し：「${undoTitle}」 (-${undoDiff}pt)`);
       save(); render();
       return;
     }
@@ -769,6 +857,8 @@
             meta.earned = base + reclaimed;
           }
         }
+        const removedTitle = it && it.title ? it.title : '名称未設定';
+        addActivityLog('task-del', `行動を削除：「${removedTitle}」`);
         items.splice(idx,1);
         save();
         render();
@@ -879,6 +969,8 @@
       const newItem = {id:uid(), title, mode, condition, date, time, difficulty, completedCount:0, done:false, createdAt:Date.now()};
       normalizeItem(newItem);
       items.push(newItem);
+      const safeTitle = title || '名称未設定';
+      addActivityLog('task-add', `行動を追加：「${safeTitle}」`);
     }
     save(); render(); form.reset(); toggleMode(); $('#diffOut').textContent = $('#difficulty').value;
   });
@@ -894,6 +986,7 @@
     const reward = rewards.find(r=> r.id===rid);
     if(!reward){ alert('ご褒美を選択してください'); return; }
     const what = reward.name; const amt = Math.max(1, Math.floor(Number(reward.cost||1)));
+    const spendLabel = what || '名称未設定';
     if(balance() < amt){
       try{ if(spendWarn){ spendWarn.textContent = 'ポイントが足りません！'; spendWarn.style.display='block'; setTimeout(()=>{ if(spendWarn) spendWarn.style.display='none'; }, 2500); } }catch{}
       alert('ポイントが足りません！');
@@ -901,12 +994,18 @@
     }
     meta.spent = (meta.spent||0) + amt; meta.spendLog = meta.spendLog||[]; meta.spendLog.push({id:uid(), what, amt, at:Date.now(), rewardId: rid});
     if(meta.spendLog.length > SPEND_LOG_MAX){ meta.spendLog.splice(0, meta.spendLog.length - SPEND_LOG_MAX); }
+    addActivityLog('spend', `ポイント消費：「${spendLabel}」 (-${amt}pt)`);
     saveStore(); render(); if(rewardSelect) rewardSelect.value='';
   });
   undoLastSpendBtn.addEventListener('click', ()=>{
     const meta = ensureUserMeta(); if(!meta) return;
     const logs = meta.spendLog||[]; if(!logs.length){ alert('取り消す消費がありません'); return; }
-    const last = logs.pop(); meta.spent = Math.max(0, (meta.spent||0) - (last.amt||0)); saveStore(); render();
+    const last = logs.pop();
+    const amt = Math.max(0, Number(last && last.amt) || 0);
+    const whatLabel = last && last.what ? last.what : '名称未設定';
+    meta.spent = Math.max(0, (meta.spent||0) - amt);
+    addActivityLog('spend-undo', `消費を取り消し：「${whatLabel}」 (+${amt}pt)`);
+    saveStore(); render();
   });
 
   // Rewards: add/delete
@@ -915,13 +1014,20 @@
     const name = String($('#rewardName').value||'').trim(); const cost = Math.max(1, Math.floor(Number($('#rewardCost').value||1)));
     if(!name){ alert('ご褒美名を入力してください'); return; }
     meta.rewards = meta.rewards||[]; meta.rewards.push({ id: uid(), name, cost });
-    saveStore(); $('#rewardForm').reset(); renderRewards();
+    addActivityLog('reward-add', `ご褒美を追加：「${name}」 (${cost}pt)`);
+    saveStore(); $('#rewardForm').reset(); render();
   });
   rewardsListEl.addEventListener('click', (e)=>{
     const delBtn = e.target.closest('[data-reward-del]'); if(!delBtn) return;
     const id = delBtn.getAttribute('data-reward-del'); const meta = ensureUserMeta(); if(!meta) return;
     const i = (meta.rewards||[]).findIndex(r=> r.id===id); if(i<0) return;
-    if(confirm('このご褒美を削除しますか？')){ meta.rewards.splice(i,1); saveStore(); renderRewards(); }
+    if(confirm('このご褒美を削除しますか？')){
+      const removed = meta.rewards.splice(i,1)[0];
+      const removedName = removed && removed.name ? removed.name : '名称未設定';
+      addActivityLog('reward-del', `ご褒美を削除：「${removedName}」`);
+      saveStore();
+      render();
+    }
   });
 
   function today(offset=0){ const dt=new Date(); dt.setDate(dt.getDate()+offset); const y=dt.getFullYear(); const m=String(dt.getMonth()+1).padStart(2,'0'); const d=String(dt.getDate()).padStart(2,'0'); return `${y}-${m}-${d}` }
