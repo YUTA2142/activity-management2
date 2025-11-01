@@ -227,18 +227,15 @@
 <!-- Spend history list (under the action list) -->
   <section aria-labelledby="spendListTitle" class="card fade-in">
     <div class="body">
-      <h2 id="spendListTitle">消費リスト</h2>
+      <h2 id="spendListTitle">ポイント履歴</h2>
+      <div aria-label="ポイント履歴の表示切り替え" class="seg list-filters" id="spendListFilters" role="tablist">
+        <button aria-pressed="false" class="btn" data-history-filter="all">全て</button>
+        <button aria-pressed="true" class="btn" data-history-filter="spend">消費</button>
+        <button aria-pressed="false" class="btn" data-history-filter="earn">追加</button>
+      </div>
+      <div class="hint" id="spendNote" style="display:none; margin-bottom:12px"></div>
       <div class="list" id="spendList"></div>
-      <div class="empty" id="spendEmpty">消費履歴がありません。上の「ポイントを消費」から追加してください。</div>
-    </div>
-  </section>
-  <!-- Activity log -->
-  <section aria-labelledby="activityLogTitle" class="card fade-in">
-    <div class="body">
-      <h2 id="activityLogTitle">ログ</h2>
-      <p class="hint" id="activityLogNote">直近3日分の操作ログを表示します。</p>
-      <div class="list" id="activityLogList"></div>
-      <div class="empty" id="activityLogEmpty">ログがまだありません。ポイント獲得・消費や行動／ご褒美の追加・削除を行うと表示されます。</div>
+      <div class="empty" id="spendEmpty">履歴がありません。上でポイントの獲得や消費を行うと表示されます。</div>
     </div>
   </section>
 </div>
@@ -340,8 +337,10 @@
   const spendLogWrap = $('#spendLogWrap');
   const spendWarn = $('#spendWarn');
   const undoLastSpendBtn = $('#undoLastSpend');
+  const spendNoteEl = document.querySelector('#spendNote');
   const spendListEl = document.querySelector('#spendList');
   const spendEmptyEl = document.querySelector('#spendEmpty');
+  const spendListFilterButtons = $$('#spendListFilters [data-history-filter]');
   const rewardForm = $('#rewardForm');
   const rewardsListEl = $('#rewardsList');
   const rewardsEmptyEl = $('#rewardsEmpty');
@@ -354,6 +353,7 @@
   const clearPointsCancel = $('#clearPointsCancel');
   const clearPointsConfirm = $('#clearPointsConfirm');
   let filter = 'all';
+  let spendHistoryFilter = 'spend';
 
   // 表示・保存の上限（必要に応じて調整可）
   const SPEND_LIST_LIMIT = 200;   // 画面に表示する消費履歴の最大件数（新しい順）
@@ -645,6 +645,7 @@
     }
     if(typeof meta.spent !== 'number') meta.spent = 0;
     if(!Array.isArray(meta.spendLog)) meta.spendLog = [];
+    cleanPointLogs(meta);
     if(typeof meta.earned !== 'number') meta.earned = 0;
     if(!Array.isArray(meta.rewards)) meta.rewards = [];
     if(!Array.isArray(meta.activityLog)) meta.activityLog = [];
@@ -689,6 +690,28 @@
   function purgeActivityLogs(logs){
     const cutoff = Date.now() - LOG_RETENTION_MS;
     return (logs||[]).filter(log=> Number(log.at) >= cutoff);
+  }
+
+  function cleanPointLogs(meta){
+    if(!meta) return [];
+    let changed = false;
+    const original = Array.isArray(meta.spendLog) ? meta.spendLog : [];
+    const cleaned = [];
+    for(const entry of original){
+      if(!entry || typeof entry !== 'object'){ changed = true; continue; }
+      if(!entry.type){ entry.type = 'spend'; changed = true; }
+      entry.type = entry.type === 'earn' ? 'earn' : 'spend';
+      const amtNum = Math.max(0, Math.floor(Number(entry.amt)||0));
+      if(amtNum !== entry.amt){ entry.amt = amtNum; changed = true; }
+      if(typeof entry.what !== 'string'){ entry.what = String(entry.what||''); changed = true; }
+      if(typeof entry.at !== 'number' || !Number.isFinite(entry.at)){ entry.at = Number(entry.at)||Date.now(); changed = true; }
+      cleaned.push(entry);
+    }
+    if(changed || cleaned.length !== original.length){
+      meta.spendLog = cleaned;
+      saveStore();
+    }
+    return meta.spendLog;
   }
 
   function activityLogLabel(kind){
@@ -754,11 +777,14 @@
 
   function renderSpendLog(){
     const meta = ensureUserMeta(); if(!meta) return;
-    const logs = meta.spendLog||[];
-    if(!logs.length){ spendLogWrap.innerHTML = '消費履歴：なし'; return; }
+    const logs = cleanPointLogs(meta);
+    if(!logs.length){ spendLogWrap.innerHTML = 'ポイント履歴：なし'; return; }
     const last = logs[logs.length-1];
     const fmt = (t)=>{ const d=new Date(t); const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'), hh=String(d.getHours()).padStart(2,'0'), mm=String(d.getMinutes()).padStart(2,'0'); return `${y}/${m}/${da} ${hh}:${mm}` };
-    spendLogWrap.innerHTML = `消費履歴（最新1件表示）：「${escapeHtml(last.what)}」に ${last.amt}pt - ${fmt(last.at)}`;
+    const type = last && last.type === 'earn' ? 'earn' : 'spend';
+    const label = type === 'earn' ? '追加' : '消費';
+    const sign = type === 'earn' ? '+' : '-';
+    spendLogWrap.innerHTML = `ポイント履歴（最新1件表示）：${label}「${escapeHtml(last.what)}」 ${sign}${last.amt}pt - ${fmt(last.at)}`;
   }
 
   function render(){
@@ -825,6 +851,15 @@
       it.doneAt = Date.now();
       const gainDiff = Number(it.difficulty)||0;
       const gainTitle = it && it.title ? it.title : '名称未設定';
+      if(gainDiff > 0){
+        const meta = ensureUserMeta();
+        if(meta){
+          const logs = cleanPointLogs(meta);
+          logs.push({ id: uid(), type: 'earn', what: gainTitle, amt: gainDiff, at: Date.now(), itemId: it.id });
+          if(logs.length > SPEND_LOG_MAX){ logs.splice(0, logs.length - SPEND_LOG_MAX); }
+          saveStore();
+        }
+      }
       addActivityLog('earn', `ポイント獲得：「${gainTitle}」 (+${gainDiff}pt)`);
       save(); render();
       return;
@@ -909,24 +944,57 @@
   }
 
   function renderSpendList(){
-    const meta = ensureUserMeta(); if(!meta){ spendListEl.innerHTML=''; spendEmptyEl.style.display='block'; return; }
-    const logs = (meta.spendLog||[]).slice().sort((a,b)=> b.at - a.at).slice(0, SPEND_LIST_LIMIT);
+    spendListFilterButtons.forEach(btn=>{
+      const target = btn.dataset.historyFilter || 'spend';
+      btn.setAttribute('aria-pressed', String(target === spendHistoryFilter));
+    });
+    const meta = ensureUserMeta();
+    if(!meta){
+      spendListEl.innerHTML='';
+      if(spendNoteEl){ spendNoteEl.style.display='none'; spendNoteEl.textContent=''; }
+      spendEmptyEl.textContent = spendHistoryFilter === 'earn'
+        ? 'ポイント追加の履歴がありません。行動を達成すると表示されます。'
+        : spendHistoryFilter === 'all'
+          ? 'ポイント履歴がありません。ポイントの獲得や消費を行うと表示されます。'
+          : 'ポイント消費の履歴がありません。上の「ポイントを消費」から追加してください。';
+      spendEmptyEl.style.display='block';
+      return;
+    }
+    const allLogs = cleanPointLogs(meta).slice().sort((a,b)=> b.at - a.at);
+    const filteredLogs = allLogs.filter(log=>{
+      const type = log.type === 'earn' ? 'earn' : 'spend';
+      if(spendHistoryFilter === 'all') return true;
+      return spendHistoryFilter === 'earn' ? type === 'earn' : type === 'spend';
+    }).slice(0, SPEND_LIST_LIMIT);
     spendListEl.innerHTML='';
-    if(!logs.length){ spendEmptyEl.style.display='block'; return; }
+    if(!filteredLogs.length){
+      spendEmptyEl.textContent = spendHistoryFilter === 'earn'
+        ? 'ポイント追加の履歴がありません。行動を達成すると表示されます。'
+        : spendHistoryFilter === 'all'
+          ? 'ポイント履歴がありません。ポイントの獲得や消費を行うと表示されます。'
+          : 'ポイント消費の履歴がありません。上の「ポイントを消費」から追加してください。';
+      spendEmptyEl.style.display='block';
+      if(spendNoteEl){ spendNoteEl.style.display='none'; spendNoteEl.textContent=''; }
+      return;
+    }
     spendEmptyEl.style.display='none';
-    const note = document.createElement('div');
-    note.className='hint';
-    note.textContent = `最新${Math.min(SPEND_LIST_LIMIT, logs.length)}件を表示（古い履歴は自動で間引き）`;
-    spendListEl.appendChild(note);
-    logs.forEach(log=>{
+    const label = spendHistoryFilter === 'earn' ? '追加' : spendHistoryFilter === 'all' ? '追加と消費' : '消費';
+    if(spendNoteEl){
+      spendNoteEl.textContent = `${label}の最新${Math.min(SPEND_LIST_LIMIT, filteredLogs.length)}件を表示（古い履歴は自動で間引き）`;
+      spendNoteEl.style.display='block';
+    }
+    filteredLogs.forEach(log=>{
+      const type = log.type === 'earn' ? 'earn' : 'spend';
+      const itemLabel = type === 'earn' ? '追加' : '消費';
+      const sign = type === 'earn' ? '+' : '-';
       const el = document.createElement('article');
       el.className='item fade-in';
       el.innerHTML = `
         <div class="item-head">
-          <span class="badge">消費</span>
+          <span class="badge">${itemLabel}</span>
           <div class="title">${escapeHtml(log.what)}</div>
           <div class="spacer"></div>
-          <div class="badge" title="消費pt">-${log.amt} pt</div>
+          <div class="badge" title="ポイント">${sign}${log.amt} pt</div>
         </div>
         <div class="muted" style="margin:6px 0 6px"><span class="date">${fmtTs(log.at)}</span></div>
         <div class="bar" aria-hidden="true"><i style="width:${Math.min(100, (log.amt/10)*100)}%"></i></div>
@@ -979,6 +1047,15 @@
   // フィルター
   filterButtons.forEach(btn=> btn.addEventListener('click', ()=>{ filter = btn.dataset.filter; render(); }));
 
+  spendListFilterButtons.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const next = btn.dataset.historyFilter || 'spend';
+      if(spendHistoryFilter === next) return;
+      spendHistoryFilter = next;
+      renderSpendList();
+    });
+  });
+
   // ポイント消費
   spendForm.addEventListener('submit', (e)=>{
     e.preventDefault(); const meta = ensureUserMeta(); if(!meta){ alert('ログインしてください'); return; }
@@ -992,20 +1069,29 @@
       alert('ポイントが足りません！');
       return;
     }
-    meta.spent = (meta.spent||0) + amt; meta.spendLog = meta.spendLog||[]; meta.spendLog.push({id:uid(), what, amt, at:Date.now(), rewardId: rid});
-    if(meta.spendLog.length > SPEND_LOG_MAX){ meta.spendLog.splice(0, meta.spendLog.length - SPEND_LOG_MAX); }
+    meta.spent = (meta.spent||0) + amt;
+    const logs = cleanPointLogs(meta);
+    logs.push({id:uid(), type:'spend', what, amt, at:Date.now(), rewardId: rid});
+    if(logs.length > SPEND_LOG_MAX){ logs.splice(0, logs.length - SPEND_LOG_MAX); }
     addActivityLog('spend', `ポイント消費：「${spendLabel}」 (-${amt}pt)`);
     saveStore(); render(); if(rewardSelect) rewardSelect.value='';
   });
   undoLastSpendBtn.addEventListener('click', ()=>{
     const meta = ensureUserMeta(); if(!meta) return;
-    const logs = meta.spendLog||[]; if(!logs.length){ alert('取り消す消費がありません'); return; }
-    const last = logs.pop();
-    const amt = Math.max(0, Number(last && last.amt) || 0);
-    const whatLabel = last && last.what ? last.what : '名称未設定';
-    meta.spent = Math.max(0, (meta.spent||0) - amt);
-    addActivityLog('spend-undo', `消費を取り消し：「${whatLabel}」 (+${amt}pt)`);
-    saveStore(); render();
+    const logs = cleanPointLogs(meta);
+    for(let i=logs.length-1; i>=0; i--){
+      const entry = logs[i];
+      const type = entry && entry.type === 'earn' ? 'earn' : 'spend';
+      if(type !== 'spend') continue;
+      logs.splice(i,1);
+      const amt = Math.max(0, Number(entry && entry.amt) || 0);
+      const whatLabel = entry && entry.what ? entry.what : '名称未設定';
+      meta.spent = Math.max(0, (meta.spent||0) - amt);
+      addActivityLog('spend-undo', `消費を取り消し：「${whatLabel}」 (+${amt}pt)`);
+      saveStore(); render();
+      return;
+    }
+    alert('取り消す消費がありません');
   });
 
   // Rewards: add/delete
