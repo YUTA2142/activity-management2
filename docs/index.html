@@ -39,6 +39,7 @@
   .row.cols-3{grid-template-columns:1fr 1fr 1fr}
   label{font-size:.9rem; color:var(--text-2)}
   input, select, textarea{width:100%; padding:12px 12px; border-radius:12px; background:#0f1113; color:var(--text); border:1px solid var(--muted); outline:none; transition:.2s}
+  input[type="checkbox"], input[type="radio"]{width:auto; min-width:0; padding:0}
   input:focus, select:focus, textarea:focus{border-color:var(--brand); background:#0d0f11}
   .hint{font-size:.8rem; color:var(--text-2)}
   .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
@@ -74,6 +75,7 @@
   .modal h3{margin:0 0 10px; font-size:1.05rem}
   .muted2{color:var(--text-2); font-size:.9rem}
   .inline{display:flex; align-items:center; gap:8px}
+  .inline label.inline{white-space:nowrap; flex-shrink:0}
 
   /* ===== Header controls (text labels) ===== */
   #settingsBtn svg{stroke:var(--text)}
