@@ -24,15 +24,12 @@
   .header-actions{margin-left:auto; display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-end}
   .points{display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:999px; background:linear-gradient(180deg,var(--muted),var(--muted-2)); border:1px solid #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); font-weight:600}
   .points small{color:var(--text-2); font-weight:500}
-  .view-toggle{position:relative; display:inline-flex; align-items:center; flex-shrink:0; cursor:pointer}
+  .view-toggle{position:relative; display:inline-flex; align-items:center; justify-content:flex-end; flex-shrink:0; cursor:pointer; width:32px}
   .view-toggle input{position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; z-index:2}
-  .view-toggle .track{position:relative; display:flex; align-items:center; gap:0; padding:4px; border-radius:999px; background:linear-gradient(180deg,#2d3238,#24282d); border:1px solid #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); min-width:190px; width:clamp(190px, 38vw, 240px); pointer-events:none}
-  .view-toggle .option{flex:1; text-align:center; font-size:.85rem; padding:6px 10px; color:var(--text-2); font-weight:600; white-space:nowrap; transition:color .2s}
-  .view-toggle .thumb{position:absolute; top:4px; bottom:4px; left:4px; width:calc((100% - 8px)/2); border-radius:999px; background:linear-gradient(180deg,#6c737d,#484e56); box-shadow:0 4px 12px rgba(0,0,0,.35); transition:transform .25s ease}
+  .view-toggle .track{position:relative; display:flex; align-items:center; gap:0; padding:2px; border-radius:999px; background:linear-gradient(180deg,#2d3238,#24282d); border:1px solid #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); min-width:0; width:32px; height:20px; pointer-events:none}
+  .view-toggle .thumb{position:absolute; top:2px; bottom:2px; left:2px; width:calc((100% - 4px)/2); border-radius:999px; background:linear-gradient(180deg,#6c737d,#484e56); box-shadow:0 4px 12px rgba(0,0,0,.35); transition:transform .25s ease}
   .view-toggle input:checked + .track .thumb{transform:translateX(100%)}
   .view-toggle input:focus-visible + .track{outline:2px solid var(--brand); outline-offset:2px}
-  .view-toggle input:not(:checked) + .track .option-left,
-  .view-toggle input:checked + .track .option-right{color:var(--text)}
   main{flex:1;}
   .card{background:linear-gradient(180deg,var(--panel),#15171a); border:1px solid #0a0b0c; border-radius:var(--radius); box-shadow:var(--shadow)}
   .card .body{padding:16px}
@@ -45,6 +42,9 @@
   input:focus, select:focus, textarea:focus{border-color:var(--brand); background:#0d0f11}
   textarea{min-height:100px; resize:vertical}
   .hint{font-size:.8rem; color:var(--text-2)}
+  .time-range{display:flex; align-items:center; gap:8px}
+  .time-range input{flex:1; min-width:0}
+  .time-range .time-sep{color:var(--text-2); font-weight:600}
   .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
   .btn{padding:10px 14px; border-radius:12px; border:1px solid #000; background:linear-gradient(180deg,#2d3238,#24282d); color:var(--text); font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px; text-decoration:none}
   .btn:hover{filter:brightness(1.08)}
@@ -80,9 +80,8 @@
     .brand .logo{width:28px; height:28px; border-radius:8px}
     h1{font-size:1rem; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
     .header-actions{margin-left:auto; gap:10px; justify-content:flex-end}
-    .view-toggle{width:100%; justify-content:flex-end}
-    .view-toggle .track{width:100%; min-width:0}
-    .view-toggle .option{font-size:.82rem; padding:6px 8px}
+    .view-toggle{width:auto}
+    .view-toggle .track{width:32px}
     .points{padding:6px 10px; gap:8px; font-size:.95rem; line-height:1}
     .points #breakdown{display:none}
   }
@@ -104,8 +103,6 @@
       <label class="view-toggle">
         <input aria-checked="true" aria-label="行動管理と週間スケジュールを切り替え" data-dashboard-href="./index.html" data-page="schedule" data-schedule-href="./schedule.html" id="viewToggle" role="switch" type="checkbox"/>
         <span aria-hidden="true" class="track">
-          <span class="option option-left">行動管理</span>
-          <span class="option option-right">週間スケジュール</span>
           <span class="thumb"></span>
         </span>
       </label>
@@ -134,9 +131,13 @@
               </select>
             </div>
             <div>
-              <label for="time">時間</label>
-              <input id="time" name="time" type="time"/>
-              <p class="hint">時間を指定しない場合は「終日」として表示されます。</p>
+              <label for="timeFrom">時間帯</label>
+              <div class="time-range">
+                <input aria-label="開始時間" id="timeFrom" name="timeFrom" type="time"/>
+                <span aria-hidden="true" class="time-sep">〜</span>
+                <input aria-label="終了時間" id="timeTo" name="timeTo" type="time"/>
+              </div>
+              <p class="hint">開始時間・終了時間を指定しない場合は「終日」として表示されます。</p>
             </div>
           </div>
           <div class="row">
@@ -287,6 +288,18 @@
       .replace(/'/g,'&#39;');
   }
 
+  function normalizeTimeValue(value){
+    if(typeof value !== 'string') return '';
+    const trimmed = value.trim();
+    if(!trimmed) return '';
+    const parts = trimmed.split(':');
+    if(parts.length < 2) return '';
+    const hour = parts[0] ?? '00';
+    const minute = parts[1] ?? '00';
+    const normalized = `${hour.padStart(2,'0')}:${minute.padStart(2,'0')}`;
+    return /^\d{2}:\d{2}$/.test(normalized) ? normalized : '';
+  }
+
   function loadPoints(){
     if(!totalEl) return;
     let store;
@@ -327,18 +340,16 @@
     dayOrder.forEach(({id}) => {
       const entries = Array.isArray(raw && raw[id]) ? raw[id] : [];
       next[id] = entries.map(entry => {
-        const cleaned = {
+        const rawStart = typeof entry?.startTime === 'string' ? entry.startTime : (typeof entry?.time === 'string' ? entry.time : '');
+        const rawEnd = typeof entry?.endTime === 'string' ? entry.endTime : '';
+        return {
           id: typeof entry?.id === 'string' ? entry.id : `sc-${Math.random().toString(36).slice(2,9)}`,
           title: String(entry?.title || ''),
-          time: typeof entry?.time === 'string' ? entry.time : '',
+          startTime: normalizeTimeValue(rawStart),
+          endTime: normalizeTimeValue(rawEnd),
           memo: typeof entry?.memo === 'string' ? entry.memo : '',
           createdAt: Number(entry?.createdAt) || Date.now()
         };
-        if(cleaned.time && !/^\d{2}:\d{2}$/.test(cleaned.time)){
-          const [h='00', m='00'] = cleaned.time.split(':');
-          cleaned.time = `${h.padStart(2,'0')}:${m.padStart(2,'0')}`.slice(0,5);
-        }
-        return cleaned;
       });
     });
     return next;
@@ -359,14 +370,32 @@
 
   function sortEntries(entries){
     return entries.slice().sort((a,b)=>{
-      const ta = a.time || '';
-      const tb = b.time || '';
-      if(ta && tb){
-        if(ta === tb) return (a.createdAt||0) - (b.createdAt||0);
-        return ta.localeCompare(tb);
+      const startA = a.startTime || '';
+      const startB = b.startTime || '';
+      if(startA && startB){
+        if(startA === startB){
+          const endA = a.endTime || '';
+          const endB = b.endTime || '';
+          if(endA && endB){
+            if(endA === endB) return (a.createdAt||0) - (b.createdAt||0);
+            return endA.localeCompare(endB);
+          }
+          if(endA) return -1;
+          if(endB) return 1;
+          return (a.createdAt||0) - (b.createdAt||0);
+        }
+        return startA.localeCompare(startB);
       }
-      if(ta) return -1;
-      if(tb) return 1;
+      if(startA) return -1;
+      if(startB) return 1;
+      const endA = a.endTime || '';
+      const endB = b.endTime || '';
+      if(endA && endB){
+        if(endA === endB) return (a.createdAt||0) - (b.createdAt||0);
+        return endA.localeCompare(endB);
+      }
+      if(endA) return -1;
+      if(endB) return 1;
       return (a.createdAt||0) - (b.createdAt||0);
     });
   }
@@ -389,7 +418,16 @@
       entries.forEach(entry => {
         const item = document.createElement('article');
         item.className = 'schedule-item fade-in';
-        const timeLabel = entry.time ? entry.time : '終日';
+        const hasStart = Boolean(entry.startTime);
+        const hasEnd = Boolean(entry.endTime);
+        let timeLabel = '終日';
+        if(hasStart && hasEnd){
+          timeLabel = `${entry.startTime}〜${entry.endTime}`;
+        }else if(hasStart){
+          timeLabel = entry.startTime;
+        }else if(hasEnd){
+          timeLabel = `〜${entry.endTime}`;
+        }
         const memo = entry.memo ? `<div class="schedule-notes">${escapeHtml(entry.memo)}</div>` : '';
         item.innerHTML = `
           <div class="schedule-item-row">
@@ -438,17 +476,36 @@
     e.preventDefault();
     const day = form.day.value || 'mon';
     const title = form.title.value.trim();
-    const time = form.time.value;
+    const rawStart = form.timeFrom.value;
+    const rawEnd = form.timeTo.value;
+    const startTime = normalizeTimeValue(rawStart);
+    const endTime = normalizeTimeValue(rawEnd);
     const memo = form.memo.value.trim();
     if(!title){
       setError('予定の内容を入力してください。');
       form.title.focus();
       return;
     }
+    if(rawStart && !startTime){
+      setError('開始時間の形式が正しくありません。');
+      form.timeFrom.focus();
+      return;
+    }
+    if(rawEnd && !endTime){
+      setError('終了時間の形式が正しくありません。');
+      form.timeTo.focus();
+      return;
+    }
+    if(startTime && endTime && startTime > endTime){
+      setError('終了時間は開始時間より後の時刻を指定してください。');
+      form.timeTo.focus();
+      return;
+    }
     const entry = {
       id: `sc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`,
       title,
-      time: time || '',
+      startTime,
+      endTime,
       memo,
       createdAt: Date.now()
     };
