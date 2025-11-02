@@ -24,10 +24,6 @@
   .header-actions{margin-left:auto; display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-end}
   .points{display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:999px; background:linear-gradient(180deg,var(--muted),var(--muted-2)); border:1px solid #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); font-weight:600}
   .points small{color:var(--text-2); font-weight:500}
-  .view-toggle{position:relative; display:inline-flex; align-items:center; justify-content:flex-end; flex-shrink:0; cursor:pointer; width:40px}
-  .view-toggle input{position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; z-index:2}
-  .view-toggle .track{position:relative; display:flex; align-items:center; gap:0; padding:3px; border-radius:999px; background:linear-gradient(180deg,#2d3238,#24282d); border:1px solid #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); min-width:0; width:40px; height:24px; pointer-events:none}
-  .view-toggle .thumb{position:absolute; top:3px; bottom:3px; left:3px; width:calc((100% - 6px)/2); border-radius:999px; background:linear-gradient(180deg,#6c737d,#484e56); box-shadow:0 4px 12px rgba(0,0,0,.35); transition:transform .25s ease}
   .view-toggle input:checked + .track .thumb{transform:translateX(100%)}
   .view-toggle input:focus-visible + .track{outline:2px solid var(--brand); outline-offset:2px}
   .icon-btn{all:unset; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:12px; background:linear-gradient(180deg,#2d3238,#24282d); border:1px solid #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); color:var(--text-2); transition:.2s}
@@ -95,7 +91,6 @@
     h1{font-size:1rem; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
     .header-actions{margin-left:auto; gap:10px; justify-content:flex-end}
     .view-toggle{width:auto}
-    .view-toggle .track{width:40px}
     .points{padding:6px 10px; gap:8px; font-size:.95rem; line-height:1}
     .icon-btn{width:34px; height:34px; border-radius:10px}
     .points #breakdown{display:none}
