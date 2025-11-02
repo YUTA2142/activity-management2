@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Activity-management | 週間スケジュール</title>
+<style>
+  :root{
+    --bg:#111315; --panel:#1a1d20; --muted:#2a2e33; --muted-2:#3a3f45;
+    --text:#e6e8ea; --text-2:#b7bcc2; --brand:#8a92a3; --ok:#7fd1ae; --warn:#e7c888; --err:#d08989;
+    --shadow: 0 10px 24px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.4); --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0; background:linear-gradient(180deg,var(--bg),#0e0f10 30%, var(--bg) 100%);
+    color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", Helvetica, Arial, "Noto Sans JP",
+ "Apple Color Emoji","Segoe UI Emoji";
+    display:flex; flex-direction:column; min-height:100dvh;}
+  header{position:sticky; z-index:5; top:0; background:rgba(17,19,21,.75); backdrop-filter:saturate(120%) blur(8px); border-bottom:1px solid var(--muted); box-shadow:var(--shadow)}
+  .wrap{max-width:980px; margin-inline:auto; padding:14px 16px}
+  .brand{display:flex; align-items:center; gap:12px}
+  .brand .logo{width:36px;height:36px; border-radius:10px; background:linear-gradient(135deg,var(--muted-2),var(--muted)); display:grid; place-items:center; box-shadow:inset 0 0 0 1px #000, 0 6px 18px rgba(0,0,0,.35)}
+  h1{font-size:1.15rem; margin:0; letter-spacing:.02em}
+  .header-actions{margin-left:auto; display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-end}
+  .points{display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:999px; background:linear-gradient(180deg,var(--muted),var(--muted-2)); border:1px solid #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); font-weight:600}
+  .points small{color:var(--text-2); font-weight:500}
+  .view-toggle{position:relative; display:inline-flex; align-items:center; flex-shrink:0; cursor:pointer}
+  .view-toggle input{position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; z-index:2}
+  .view-toggle .track{position:relative; display:flex; align-items:center; gap:0; padding:4px; border-radius:999px; background:linear-gradient(180deg,#2d3238,#24282d); border:1px solid #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); min-width:190px; width:clamp(190px, 38vw, 240px); pointer-events:none}
+  .view-toggle .option{flex:1; text-align:center; font-size:.85rem; padding:6px 10px; color:var(--text-2); font-weight:600; white-space:nowrap; transition:color .2s}
+  .view-toggle .thumb{position:absolute; top:4px; bottom:4px; left:4px; width:calc((100% - 8px)/2); border-radius:999px; background:linear-gradient(180deg,#6c737d,#484e56); box-shadow:0 4px 12px rgba(0,0,0,.35); transition:transform .25s ease}
+  .view-toggle input:checked + .track .thumb{transform:translateX(100%)}
+  .view-toggle input:focus-visible + .track{outline:2px solid var(--brand); outline-offset:2px}
+  .view-toggle input:not(:checked) + .track .option-left,
+  .view-toggle input:checked + .track .option-right{color:var(--text)}
+  main{flex:1;}
+  .card{background:linear-gradient(180deg,var(--panel),#15171a); border:1px solid #0a0b0c; border-radius:var(--radius); box-shadow:var(--shadow)}
+  .card .body{padding:16px}
+  .card h2{font-size:1rem; margin:0 0 10px}
+  .row{display:grid; gap:10px; grid-template-columns:1fr}
+  .row.cols-2{grid-template-columns:1fr 1fr}
+  .row.cols-3{grid-template-columns:1fr 1fr 1fr}
+  label{font-size:.9rem; color:var(--text-2)}
+  input, select, textarea{width:100%; padding:12px 12px; border-radius:12px; background:#0f1113; color:var(--text); border:1px solid var(--muted); outline:none; transition:.2s}
+  input:focus, select:focus, textarea:focus{border-color:var(--brand); background:#0d0f11}
+  textarea{min-height:100px; resize:vertical}
+  .hint{font-size:.8rem; color:var(--text-2)}
+  .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+  .btn{padding:10px 14px; border-radius:12px; border:1px solid #000; background:linear-gradient(180deg,#2d3238,#24282d); color:var(--text); font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px; text-decoration:none}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.primary{background:linear-gradient(180deg,#6c737d,#484e56);}
+  .btn.ghost{background:transparent; border:1px dashed var(--muted-2); color:var(--text-2)}
+  .btn.err{background:linear-gradient(180deg,#8f6a6a,#5f4747)}
+  .btn.ok{background:linear-gradient(180deg,#6a8f7f,#476457)}
+  .btn.tiny{padding:6px 8px; font-size:.8rem}
+  .seg{display:flex; gap:8px}
+  .seg .btn{padding:8px 12px}
+  .seg .btn[aria-current="page"]{outline:2px solid var(--brand); outline-offset:1px}
+  .week-grid{display:grid; gap:16px; grid-template-columns:1fr}
+  .day-card{display:flex; flex-direction:column; gap:12px}
+  .day-head{display:flex; align-items:center; gap:8px}
+  .day-head h3{margin:0; font-size:1rem}
+  .day-head .btn{margin-left:auto}
+  .schedule-empty{padding:12px; border-radius:12px; background:rgba(10,11,12,.6); border:1px dashed var(--muted); color:var(--text-2); font-size:.9rem}
+  .schedule-list{display:flex; flex-direction:column; gap:10px}
+  .schedule-item{background:linear-gradient(180deg,#15171a,#121416); border:1px solid #0a0b0c; border-radius:12px; padding:12px}
+  .schedule-item-row{display:flex; align-items:center; gap:10px}
+  .spacer{flex:1}
+  .schedule-time{font-size:.85rem; padding:4px 8px; border-radius:999px; background:linear-gradient(180deg,#2b3036,#23272c); border:1px solid #000; color:var(--text-2)}
+  .schedule-title{font-weight:600}
+  .schedule-notes{margin-top:8px; color:var(--text-2); font-size:.9rem; white-space:pre-wrap; word-break:break-word}
+  #scheduleStatus{margin-top:8px; min-height:1.2em; color:var(--text-2)}
+  footer{margin-top:auto; color:var(--text-2); font-size:.8rem; text-align:center; padding:18px 12px}
+  @media(min-width:780px){ .week-grid{grid-template-columns:repeat(2,1fr);} }
+  @media(min-width:1100px){ .week-grid{grid-template-columns:repeat(3,1fr);} }
+  @media (max-width: 520px){
+    header{border-bottom:1px solid #0b0c0d}
+    header .wrap{padding:8px 12px}
+    .brand{display:flex; align-items:center; gap:10px; flex-wrap:nowrap}
+    .brand .logo{width:28px; height:28px; border-radius:8px}
+    h1{font-size:1rem; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .header-actions{margin-left:auto; gap:10px; justify-content:flex-end}
+    .view-toggle{width:100%; justify-content:flex-end}
+    .view-toggle .track{width:100%; min-width:0}
+    .view-toggle .option{font-size:.82rem; padding:6px 8px}
+    .points{padding:6px 10px; gap:8px; font-size:.95rem; line-height:1}
+    .points #breakdown{display:none}
+  }
+  @media (max-width: 380px){
+    h1{font-size:.95rem}
+    .points{font-size:.9rem}
+  }
+</style>
+<link href="/manifest.webmanifest" rel="manifest"/><meta content="#111315" name="theme-color"/><meta content="yes" name="apple-mobile-web-app-capable"/><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/><link href="/icons/icon-192.png" rel="apple-touch-icon"/>
+</head>
+<body>
+<header>
+  <div class="wrap brand">
+    <div aria-hidden="true" class="logo">
+      <svg fill="none" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><rect height="18" rx="4" stroke="#9aa3b1" width="18" x="3" y="3"></rect><path d="M7 14.5L10 11l3 3 4-6" stroke="#9aa3b1" stroke-width="1.5"></path></svg>
+    </div>
+    <h1>週間スケジュール</h1>
+    <div class="header-actions">
+      <label class="view-toggle">
+        <input aria-checked="true" aria-label="行動管理と週間スケジュールを切り替え" data-dashboard-href="./index.html" data-page="schedule" data-schedule-href="./schedule.html" id="viewToggle" role="switch" type="checkbox"/>
+        <span aria-hidden="true" class="track">
+          <span class="option option-left">行動管理</span>
+          <span class="option option-right">週間スケジュール</span>
+          <span class="thumb"></span>
+        </span>
+      </label>
+      <div class="points" id="totalPoints"><small class="label">合計</small><span class="total">0</span> pt<small id="breakdown" style="display:none"></small></div>
+    </div>
+  </div>
+</header>
+<main>
+  <div class="wrap" id="scheduleApp">
+    <section class="card fade-in">
+      <div class="body">
+        <h2>予定を追加</h2>
+        <p class="hint">曜日と時間、内容を登録すると、下の週間スケジュールに反映されます。</p>
+        <form id="scheduleForm">
+          <div class="row cols-2">
+            <div>
+              <label for="day">曜日</label>
+              <select id="day" name="day">
+                <option value="mon">月曜日</option>
+                <option value="tue">火曜日</option>
+                <option value="wed">水曜日</option>
+                <option value="thu">木曜日</option>
+                <option value="fri">金曜日</option>
+                <option value="sat">土曜日</option>
+                <option value="sun">日曜日</option>
+              </select>
+            </div>
+            <div>
+              <label for="time">時間</label>
+              <input id="time" name="time" type="time"/>
+              <p class="hint">時間を指定しない場合は「終日」として表示されます。</p>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="title">予定の内容</label>
+              <input id="title" name="title" placeholder="例：07:00 朝ジョギング" required type="text"/>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="memo">メモ（任意）</label>
+              <textarea id="memo" name="memo" placeholder="補足情報や持ち物などを記入"></textarea>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn primary" type="submit">追加</button>
+            <button class="btn ghost" type="reset">リセット</button>
+          </div>
+          <div aria-live="polite" id="scheduleStatus"></div>
+        </form>
+      </div>
+    </section>
+    <section class="card fade-in" style="margin-top:16px">
+      <div class="body">
+        <h2>週間スケジュール</h2>
+        <p class="hint">曜日ごとの予定が一覧で確認できます。各予定の削除や、曜日全体のクリアも可能です。</p>
+        <div class="week-grid" id="weekGrid">
+          <article class="day-card" data-day="mon">
+            <div class="day-head">
+              <h3>月曜日</h3>
+              <button class="btn tiny ghost" data-clear-day="mon" style="display:none" type="button">すべて削除</button>
+            </div>
+            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
+            <div class="schedule-list" data-list></div>
+          </article>
+          <article class="day-card" data-day="tue">
+            <div class="day-head">
+              <h3>火曜日</h3>
+              <button class="btn tiny ghost" data-clear-day="tue" style="display:none" type="button">すべて削除</button>
+            </div>
+            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
+            <div class="schedule-list" data-list></div>
+          </article>
+          <article class="day-card" data-day="wed">
+            <div class="day-head">
+              <h3>水曜日</h3>
+              <button class="btn tiny ghost" data-clear-day="wed" style="display:none" type="button">すべて削除</button>
+            </div>
+            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
+            <div class="schedule-list" data-list></div>
+          </article>
+          <article class="day-card" data-day="thu">
+            <div class="day-head">
+              <h3>木曜日</h3>
+              <button class="btn tiny ghost" data-clear-day="thu" style="display:none" type="button">すべて削除</button>
+            </div>
+            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
+            <div class="schedule-list" data-list></div>
+          </article>
+          <article class="day-card" data-day="fri">
+            <div class="day-head">
+              <h3>金曜日</h3>
+              <button class="btn tiny ghost" data-clear-day="fri" style="display:none" type="button">すべて削除</button>
+            </div>
+            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
+            <div class="schedule-list" data-list></div>
+          </article>
+          <article class="day-card" data-day="sat">
+            <div class="day-head">
+              <h3>土曜日</h3>
+              <button class="btn tiny ghost" data-clear-day="sat" style="display:none" type="button">すべて削除</button>
+            </div>
+            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
+            <div class="schedule-list" data-list></div>
+          </article>
+          <article class="day-card" data-day="sun">
+            <div class="day-head">
+              <h3>日曜日</h3>
+              <button class="btn tiny ghost" data-clear-day="sun" style="display:none" type="button">すべて削除</button>
+            </div>
+            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
+            <div class="schedule-list" data-list></div>
+          </article>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+<footer>
+  &copy; Activity-management
+</footer>
+<script>
+(function(){
+  const STORE_KEY = 'behavior-tracker-v4';
+  const SCHEDULE_KEY = 'behavior-tracker-weekly-schedule-v1';
+  const dayOrder = [
+    { id:'mon', label:'月曜日' },
+    { id:'tue', label:'火曜日' },
+    { id:'wed', label:'水曜日' },
+    { id:'thu', label:'木曜日' },
+    { id:'fri', label:'金曜日' },
+    { id:'sat', label:'土曜日' },
+    { id:'sun', label:'日曜日' }
+  ];
+
+  const form = document.getElementById('scheduleForm');
+  const statusEl = document.getElementById('scheduleStatus');
+  const weekGrid = document.getElementById('weekGrid');
+  const totalEl = document.querySelector('#totalPoints .total');
+  const breakdownEl = document.getElementById('breakdown');
+  const viewToggle = document.getElementById('viewToggle');
+
+  if(viewToggle){
+    const currentPage = viewToggle.dataset.page || '';
+    const scheduleHref = viewToggle.dataset.scheduleHref;
+    const dashboardHref = viewToggle.dataset.dashboardHref;
+    const isSchedule = currentPage === 'schedule';
+    viewToggle.checked = isSchedule;
+    viewToggle.setAttribute('aria-checked', isSchedule ? 'true' : 'false');
+    viewToggle.addEventListener('change', event => {
+      const checked = event.target.checked;
+      event.target.setAttribute('aria-checked', checked ? 'true' : 'false');
+      if(checked && scheduleHref && currentPage !== 'schedule'){
+        window.location.href = scheduleHref;
+      }else if(!checked && dashboardHref && currentPage === 'schedule'){
+        window.location.href = dashboardHref;
+      }
+    });
+  }
+
+  const lists = {};
+  const empties = {};
+  const clearButtons = {};
+  let statusTimer = null;
+  document.querySelectorAll('[data-day]').forEach(card => {
+    const day = card.dataset.day;
+    lists[day] = card.querySelector('[data-list]');
+    empties[day] = card.querySelector('[data-empty]');
+    clearButtons[day] = card.querySelector('[data-clear-day]');
+  });
+
+  function escapeHtml(str){
+    return String(str == null ? '' : str)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
+
+  function loadPoints(){
+    if(!totalEl) return;
+    let store;
+    try{
+      store = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+    }catch{
+      store = {};
+    }
+    const uid = store && store.currentUserId;
+    if(!uid || !store.users || !store.users[uid]){
+      totalEl.textContent = '0';
+      if(breakdownEl){
+        breakdownEl.textContent = '';
+        breakdownEl.style.display = 'none';
+      }
+      return;
+    }
+    const meta = store.users[uid] || {};
+    const items = Array.isArray(meta.items) ? meta.items : [];
+    let earnedFromList = 0;
+    for(const item of items){
+      const diff = Number(item && item.difficulty) || 0;
+      const count = Math.max(0, Number(item && item.completedCount) || 0);
+      earnedFromList += diff * count;
+    }
+    const earned = earnedFromList + (Number(meta.earned) || 0);
+    const spent = Number(meta.spent) || 0;
+    const total = Math.max(0, earned - spent);
+    totalEl.textContent = String(total);
+    if(breakdownEl){
+      breakdownEl.textContent = `(取得 ${earned} / 消費 ${spent})`;
+      breakdownEl.style.display = 'inline';
+    }
+  }
+
+  function normalizeSchedule(raw){
+    const next = {};
+    dayOrder.forEach(({id}) => {
+      const entries = Array.isArray(raw && raw[id]) ? raw[id] : [];
+      next[id] = entries.map(entry => {
+        const cleaned = {
+          id: typeof entry?.id === 'string' ? entry.id : `sc-${Math.random().toString(36).slice(2,9)}`,
+          title: String(entry?.title || ''),
+          time: typeof entry?.time === 'string' ? entry.time : '',
+          memo: typeof entry?.memo === 'string' ? entry.memo : '',
+          createdAt: Number(entry?.createdAt) || Date.now()
+        };
+        if(cleaned.time && !/^\d{2}:\d{2}$/.test(cleaned.time)){
+          const [h='00', m='00'] = cleaned.time.split(':');
+          cleaned.time = `${h.padStart(2,'0')}:${m.padStart(2,'0')}`.slice(0,5);
+        }
+        return cleaned;
+      });
+    });
+    return next;
+  }
+
+  function loadSchedule(){
+    try{
+      const raw = JSON.parse(localStorage.getItem(SCHEDULE_KEY) || '{}');
+      return normalizeSchedule(raw);
+    }catch{
+      return normalizeSchedule({});
+    }
+  }
+
+  function saveSchedule(){
+    localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedule));
+  }
+
+  function sortEntries(entries){
+    return entries.slice().sort((a,b)=>{
+      const ta = a.time || '';
+      const tb = b.time || '';
+      if(ta && tb){
+        if(ta === tb) return (a.createdAt||0) - (b.createdAt||0);
+        return ta.localeCompare(tb);
+      }
+      if(ta) return -1;
+      if(tb) return 1;
+      return (a.createdAt||0) - (b.createdAt||0);
+    });
+  }
+
+  function render(){
+    dayOrder.forEach(({id, label}) => {
+      const list = lists[id];
+      const empty = empties[id];
+      const clearBtn = clearButtons[id];
+      if(!list || !empty) return;
+      list.innerHTML = '';
+      const entries = sortEntries(schedule[id] || []);
+      if(!entries.length){
+        empty.style.display = 'block';
+        if(clearBtn) clearBtn.style.display = 'none';
+        return;
+      }
+      empty.style.display = 'none';
+      if(clearBtn) clearBtn.style.display = 'inline-flex';
+      entries.forEach(entry => {
+        const item = document.createElement('article');
+        item.className = 'schedule-item fade-in';
+        const timeLabel = entry.time ? entry.time : '終日';
+        const memo = entry.memo ? `<div class="schedule-notes">${escapeHtml(entry.memo)}</div>` : '';
+        item.innerHTML = `
+          <div class="schedule-item-row">
+            <span class="schedule-time">${escapeHtml(timeLabel)}</span>
+            <div class="schedule-title">${escapeHtml(entry.title || label + 'の予定')}</div>
+            <div class="spacer"></div>
+            <button class="btn tiny err" data-remove="${id}" data-id="${escapeHtml(entry.id)}" type="button">削除</button>
+          </div>
+          ${memo}`;
+        list.appendChild(item);
+      });
+    });
+  }
+
+  function setStatus(message){
+    if(!statusEl) return;
+    if(statusTimer){
+      clearTimeout(statusTimer);
+      statusTimer = null;
+    }
+    if(message){
+      statusEl.textContent = message;
+      statusEl.style.color = 'var(--ok)';
+      statusTimer = setTimeout(()=>{
+        statusEl.textContent = '';
+        statusEl.style.color = 'var(--text-2)';
+        statusTimer = null;
+      }, 2500);
+    } else {
+      statusEl.textContent = '';
+      statusEl.style.color = 'var(--text-2)';
+    }
+  }
+
+  function setError(message){
+    if(!statusEl) return;
+    if(statusTimer){
+      clearTimeout(statusTimer);
+      statusTimer = null;
+    }
+    statusEl.textContent = message || '';
+    statusEl.style.color = 'var(--err)';
+  }
+
+  form.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const day = form.day.value || 'mon';
+    const title = form.title.value.trim();
+    const time = form.time.value;
+    const memo = form.memo.value.trim();
+    if(!title){
+      setError('予定の内容を入力してください。');
+      form.title.focus();
+      return;
+    }
+    const entry = {
+      id: `sc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`,
+      title,
+      time: time || '',
+      memo,
+      createdAt: Date.now()
+    };
+    schedule[day] = Array.isArray(schedule[day]) ? schedule[day] : [];
+    schedule[day].push(entry);
+    saveSchedule();
+    render();
+    form.reset();
+    form.day.value = day;
+    form.title.focus();
+    setStatus(`${dayOrder.find(d=>d.id===day)?.label || ''}に予定を追加しました。`);
+  });
+
+  form.addEventListener('reset', ()=>{
+    setTimeout(()=>{
+      setStatus('フォームをリセットしました。');
+    }, 0);
+  });
+
+  weekGrid.addEventListener('click', (e)=>{
+    const removeBtn = e.target.closest('[data-remove]');
+    if(removeBtn){
+      const day = removeBtn.getAttribute('data-remove');
+      const id = removeBtn.getAttribute('data-id');
+      if(!day || !id) return;
+      const entries = Array.isArray(schedule[day]) ? schedule[day] : [];
+      const idx = entries.findIndex(entry => entry.id === id);
+      if(idx >= 0){
+        entries.splice(idx,1);
+        saveSchedule();
+        render();
+        setStatus(`${dayOrder.find(d=>d.id===day)?.label || ''}の予定を削除しました。`);
+      }
+      return;
+    }
+    const clearBtn = e.target.closest('[data-clear-day]');
+    if(clearBtn){
+      const day = clearBtn.getAttribute('data-clear-day');
+      if(!day) return;
+      if(!Array.isArray(schedule[day]) || !schedule[day].length) return;
+      if(!confirm(`${dayOrder.find(d=>d.id===day)?.label || ''}の予定を全て削除しますか？`)) return;
+      schedule[day] = [];
+      saveSchedule();
+      render();
+      setStatus(`${dayOrder.find(d=>d.id===day)?.label || ''}の予定をリセットしました。`);
+    }
+  });
+
+  let schedule = loadSchedule();
+  render();
+  loadPoints();
+})();
+</script>
+</body>
+</html>
