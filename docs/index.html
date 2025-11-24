@@ -52,7 +52,9 @@
   .btn.err{background:linear-gradient(180deg,#8f6a6a,#5f4747)}
   .list{display:grid; gap:12px}
   .item{background:linear-gradient(180deg,#15171a,#121416); border:1px solid #0a0b0c; border-radius:14px; padding:12px}
-  .item-head{display:flex; align-items:center; gap:10px}
+  .item-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .item-head .badge{white-space:nowrap; flex-shrink:0}
+  .item-head .title{flex:1; min-width:0; word-break:break-word}
   .badge{font-size:.8rem; padding:4px 8px; border-radius:999px; border:1px solid #000; background:linear-gradient(180deg,#2b3036,#23272c); color:var(--text-2)}
   .date{font-size:.8rem; color:var(--text-2)}
   .title{font-weight:700}
