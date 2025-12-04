@@ -69,6 +69,10 @@
   .seg .btn{padding:8px 12px}
   .seg .btn[aria-pressed="true"]{outline:2px solid var(--brand)}
   .list-filters{margin-bottom:12px; flex-wrap:wrap}
+  .list-sorts{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; align-items:center}
+  .list-sorts label{white-space:nowrap}
+  .tag-badge{background:linear-gradient(180deg,#2f3540,#262a30)}
+  .tags{display:flex; gap:6px; flex-wrap:wrap; margin:6px 0 0}
   .fade-in{animation:fade .25s ease-out}
   @keyframes fade {from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:translateY(0)} }
   .modal{position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); backdrop-filter: blur(4px)}
@@ -165,6 +169,13 @@
 <input id="time" name="time" type="time"/>
 </div>
 </div>
+<div class="row">
+<div>
+<label for="tags">タグ（カンマ区切り・任意）</label>
+<input id="tags" name="tags" placeholder="例：朝活, 健康" type="text"/>
+<p class="hint">お気に入りのタグを付けると、リストで並び替えに使えます。</p>
+</div>
+</div>
 <div class="actions">
 <button class="btn primary" type="submit">追加</button>
 <button class="btn ghost" id="resetBtn" type="reset">リセット</button>
@@ -226,6 +237,12 @@
 <button aria-pressed="true" class="btn" data-filter="all">すべて</button>
 <button aria-pressed="false" class="btn" data-filter="cond">条件</button>
 <button aria-pressed="false" class="btn" data-filter="sched">日程</button>
+</div>
+<div class="list-sorts">
+<label for="tagSortSelect">タグで並び替え</label>
+<select id="tagSortSelect">
+  <option value="">タグを選択（任意）</option>
+</select>
 </div>
 <div class="list" id="list"></div>
 <div class="empty" id="empty">まだ項目がありません。上のフォームから追加してください。</div>
@@ -331,7 +348,9 @@
   const modeEl = $('#mode');
   const condRow = $('#condRow');
   const schedRow = $('#schedRow');
+  const tagInput = $('#tags');
   const filterButtons = $$('#listFilters [data-filter]');
+  const tagSortSelect = $('#tagSortSelect');
   const loginModal = $('#loginModal');
   const loginForm = $('#loginForm');
   const accountNameEl = $('#accountName');
@@ -380,6 +399,7 @@
 
   let filter = 'all';
   let spendHistoryFilter = 'all';
+  let sortTag = '';
 
   // 表示・保存の上限（必要に応じて調整可）
   const SPEND_LIST_LIMIT = 200;   // 画面に表示する消費履歴の最大件数（新しい順）
@@ -392,6 +412,20 @@
   // store = { currentUserId: string|null, users: { [id]: { passwordHash: string|null, items: [], spent:number, spendLog:[{id,what,amt,at}], earned:number } } }
   let store = { currentUserId:null, users:{} };
   let items = [];
+
+  const normalizeTags = (tags)=>{
+    if(!Array.isArray(tags)) tags = [];
+    const seen = new Set();
+    return tags
+      .map(t=> String(t||'').trim())
+      .filter(Boolean)
+      .filter(t=>{ const key=t.toLowerCase(); if(seen.has(key)) return false; seen.add(key); return true; });
+  };
+
+  function parseTags(raw){
+    if(!raw) return [];
+    return normalizeTags(String(raw).split(/[,、\s]+/));
+  }
 
   function normalizeItem(item){
     if(!item || typeof item !== 'object') return null;
@@ -413,6 +447,7 @@
     if(item.completedCount === 0){
       delete item.doneAt;
     }
+    item.tags = normalizeTags(item.tags||[]);
     return item;
   }
 
@@ -815,13 +850,20 @@
 
   function render(){
     listEl.innerHTML='';
-    const visible = items.slice().sort((a,b)=>{
-      const getTs = (x)=> x.mode==='sched' && x.date ? new Date(x.date + (x.time? 'T'+x.time : 'T00:00')).getTime() : x.createdAt;
-      return getTs(a) - getTs(b);
-    }).filter(i=>{
+    updateTagSortOptions();
+    const byTag = sortTag;
+    const visible = items.slice().filter(i=>{
       if(filter==='cond') return i.mode==='cond';
       if(filter==='sched') return i.mode==='sched';
       return true;
+    }).sort((a,b)=>{
+      if(byTag){
+        const aHas = hasTag(a, byTag);
+        const bHas = hasTag(b, byTag);
+        if(aHas !== bHas) return aHas ? -1 : 1;
+      }
+      const getTs = (x)=> x.mode==='sched' && x.date ? new Date(x.date + (x.time? 'T'+x.time : 'T00:00')).getTime() : x.createdAt;
+      return getTs(a) - getTs(b);
     });
     visible.forEach(item=> listEl.appendChild(renderItem(item)) );
     emptyEl.style.display = visible.length? 'none':'block';
@@ -842,6 +884,9 @@
     const count = Math.max(0, Number(item.completedCount) || 0);
     const completionNote = count>0 ? `<div class="hint" style="margin:0 0 8px">累計達成：${count}回</div>` : '';
     const undoButton = count>0 ? `<button class="btn ok icon" data-act="undo" data-id="${item.id}">✅ 1回戻す (-${item.difficulty}pt)</button>` : '';
+    const tagsHtml = item.tags && item.tags.length
+      ? `<div class="tags" aria-label="タグ">${item.tags.map(t=> `<span class="badge tag-badge">${escapeHtml(t)}</span>`).join('')}</div>`
+      : '';
     el.innerHTML = `
       <div class="item-head">
         <span class="badge">${item.mode==='sched' ? '日程' : '条件'}</span>
@@ -850,6 +895,7 @@
         <div class="badge" title="難易度">${item.difficulty} pt</div>
       </div>
       <div class="muted" style="margin:6px 0 10px">${ item.mode==='sched' ? (dd? `<span class="date">${dd}</span>`:'<span class="date">日程未設定</span>') : (item.condition? escapeHtml(item.condition) : '条件未設定') }</div>
+      ${tagsHtml}
       ${completionNote}
       <div class="bar" aria-hidden="true"><i style="width:${(item.difficulty/10)*100}%"></i></div>
       <div class="actions controls" style="margin-top:10px">
@@ -929,6 +975,7 @@
       $('#title').value = it.title; $('#mode').value = it.mode; toggleMode();
       $('#condition').value = it.condition||''; $('#date').value = it.date||''; $('#time').value = it.time||'';
       $('#difficulty').value = it.difficulty; $('#diffOut').textContent = it.difficulty;
+      if(tagInput) tagInput.value = (it.tags||[]).join(', ');
       form.dataset.editing = it.id; window.scrollTo({top:0, behavior:'smooth'});
     }
   });
@@ -938,6 +985,38 @@
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])) }
 
   function fmtTs(ts){ try{ const d=new Date(ts); const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'), hh=String(d.getHours()).padStart(2,'0'), mm=String(d.getMinutes()).padStart(2,'0'); return `${y}/${m}/${da} ${hh}:${mm}` } catch { return String(ts) } }
+
+  function hasTag(item, tag){
+    if(!tag) return false;
+    const tgt = tag.toLowerCase();
+    return (item.tags||[]).some(t=> String(t).toLowerCase() === tgt);
+  }
+
+  function getAllTags(){
+    const set = new Set();
+    items.forEach(it=> (it.tags||[]).forEach(t=>{ const v=String(t||'').trim(); if(v) set.add(v); }));
+    return Array.from(set).sort((a,b)=> a.localeCompare(b, 'ja')); // stable for Japanese
+  }
+
+  function updateTagSortOptions(){
+    if(!tagSortSelect) return;
+    const all = getAllTags();
+    const prev = sortTag;
+    const options = ['<option value="">タグを選択（任意）</option>'].concat(all.map(tag=> `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`));
+    const next = options.join('');
+    if(tagSortSelect.innerHTML !== next){ tagSortSelect.innerHTML = next; }
+    if(prev && all.includes(prev)){
+      sortTagSelectSafe(prev);
+    } else {
+      sortTag = '';
+      sortTagSelectSafe('');
+    }
+  }
+
+  function sortTagSelectSafe(value){
+    if(!tagSortSelect) return;
+    tagSortSelect.value = value;
+  }
 
   function renderRewards(){
     const meta = ensureUserMeta(); if(!meta) return;
@@ -1036,6 +1115,7 @@
     const data = new FormData(form);
     const title = String(data.get('title')||'').trim(); if(!title){ alert('行動名を入力してください'); return }
     const mode = data.get('mode'); const difficulty = Number(data.get('difficulty')||5);
+    const tags = parseTags(data.get('tags'));
     let condition = '', date='', time='';
     if(mode==='cond'){ condition = String(data.get('condition')||'').trim(); }
     else{ date = String(data.get('date')||''); time = String(data.get('time')||''); }
@@ -1048,7 +1128,7 @@
         const prevCount = Math.max(0, Number(target.completedCount) || 0);
         const prevDiff = Number(target.difficulty) || 0;
         const prevPoints = prevCount * prevDiff;
-        Object.assign(target, { title, mode, condition, date, time, difficulty });
+        Object.assign(target, { title, mode, condition, date, time, difficulty, tags });
         normalizeItem(target);
         const nextDiff = Number(target.difficulty) || 0;
         const nextPoints = prevCount * nextDiff;
@@ -1060,7 +1140,7 @@
       delete form.dataset.editing;
     }
     else{
-      const newItem = {id:uid(), title, mode, condition, date, time, difficulty, completedCount:0, done:false, createdAt:Date.now()};
+      const newItem = {id:uid(), title, mode, condition, date, time, difficulty, tags, completedCount:0, done:false, createdAt:Date.now()};
       normalizeItem(newItem);
       items.push(newItem);
       const safeTitle = title || '名称未設定';
@@ -1072,6 +1152,13 @@
 
   // フィルター
   filterButtons.forEach(btn=> btn.addEventListener('click', ()=>{ filter = btn.dataset.filter; render(); }));
+
+  if(tagSortSelect){
+    tagSortSelect.addEventListener('change', ()=>{
+      sortTag = tagSortSelect.value || '';
+      render();
+    });
+  }
 
   spendListFilterButtons.forEach(btn=>{
     btn.addEventListener('click', ()=>{
