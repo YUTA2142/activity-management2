@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Activity-management | 週間スケジュール</title>
+<title>Activity-management | ルーレット</title>
 <style>
   :root{
     --bg:#111315; --panel:#1a1d20; --muted:#2a2e33; --muted-2:#3a3f45;
@@ -13,8 +13,7 @@
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0; background:linear-gradient(180deg,var(--bg),#0e0f10 30%, var(--bg) 100%);
-    color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", Helvetica, Arial, "Noto Sans JP",
- "Apple Color Emoji","Segoe UI Emoji";
+    color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", Helvetica, Arial, "Noto Sans JP", "Apple Color Emoji","Segoe UI Emoji";
     display:flex; flex-direction:column; min-height:100dvh;}
   header{position:sticky; z-index:5; top:0; background:rgba(17,19,21,.75); backdrop-filter:saturate(120%) blur(8px); border-bottom:1px solid var(--muted); box-shadow:var(--shadow)}
   .wrap{max-width:980px; margin-inline:auto; padding:14px 16px}
@@ -27,46 +26,40 @@
   main{flex:1;}
   .card{background:linear-gradient(180deg,var(--panel),#15171a); border:1px solid #0a0b0c; border-radius:var(--radius); box-shadow:var(--shadow)}
   .card .body{padding:16px}
-  .card h2{font-size:1rem; margin:0 0 10px}
-  .row{display:grid; gap:10px; grid-template-columns:1fr}
-  .row.cols-2{grid-template-columns:1fr 1fr}
-  .row.cols-3{grid-template-columns:1fr 1fr 1fr}
-  label{font-size:.9rem; color:var(--text-2)}
-  input, select, textarea{width:100%; padding:12px 12px; border-radius:12px; background:#0f1113; color:var(--text); border:1px solid var(--muted); outline:none; transition:.2s}
-  input:focus, select:focus, textarea:focus{border-color:var(--brand); background:#0d0f11}
-  textarea{min-height:100px; resize:vertical}
-  .hint{font-size:.8rem; color:var(--text-2)}
-  .time-range{display:flex; align-items:center; gap:8px}
-  .time-range input{flex:1; min-width:0}
-  .time-range .time-sep{color:var(--text-2); font-weight:600}
-  .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
-  .btn{padding:10px 14px; border-radius:12px; border:1px solid #000; background:linear-gradient(180deg,#2d3238,#24282d); color:var(--text); font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px; text-decoration:none}
-  .btn:hover{filter:brightness(1.08)}
-  .btn.primary{background:linear-gradient(180deg,#6c737d,#484e56);}
-  .btn.ghost{background:transparent; border:1px dashed var(--muted-2); color:var(--text-2)}
-  .btn.err{background:linear-gradient(180deg,#8f6a6a,#5f4747)}
-  .btn.ok{background:linear-gradient(180deg,#6a8f7f,#476457)}
-  .btn.tiny{padding:6px 8px; font-size:.8rem}
-  .seg{display:flex; gap:8px}
-  .seg .btn{padding:8px 12px}
-  .seg .btn[aria-current="page"]{outline:2px solid var(--brand); outline-offset:1px}
-  .week-grid{display:grid; gap:16px; grid-template-columns:1fr}
-  .day-card{display:flex; flex-direction:column; gap:12px}
-  .day-head{display:flex; align-items:center; gap:8px}
-  .day-head h3{margin:0; font-size:1rem}
-  .day-head .btn{margin-left:auto}
-  .schedule-empty{padding:12px; border-radius:12px; background:rgba(10,11,12,.6); border:1px dashed var(--muted); color:var(--text-2); font-size:.9rem}
-  .schedule-list{display:flex; flex-direction:column; gap:10px}
-  .schedule-item{background:linear-gradient(180deg,#15171a,#121416); border:1px solid #0a0b0c; border-radius:12px; padding:12px}
-  .schedule-item-row{display:flex; align-items:center; gap:10px}
-  .spacer{flex:1}
-  .schedule-time{font-size:.85rem; padding:4px 8px; border-radius:999px; background:linear-gradient(180deg,#2b3036,#23272c); border:1px solid #000; color:var(--text-2)}
-  .schedule-title{font-weight:600}
-  .schedule-notes{margin-top:8px; color:var(--text-2); font-size:.9rem; white-space:pre-wrap; word-break:break-word}
-  #scheduleStatus{margin-top:8px; min-height:1.2em; color:var(--text-2)}
+  .card h2{font-size:1rem; margin:0 0 4px}
+  .hint{font-size:.9rem; color:var(--text-2); margin:0}
+  .fade-in{animation:fade .25s ease-out}
+  @keyframes fade {from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:translateY(0)} }
+  .section-head{display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap}
+  .stat{margin-left:auto; padding:10px 12px; border-radius:12px; background:linear-gradient(180deg,#2d3238,#24282d); border:1px solid #000; color:var(--text); font-weight:700; display:inline-flex; align-items:center; gap:6px}
+  .stat small{color:var(--text-2); font-weight:500}
+  .roulette-area{display:grid; grid-template-columns:1fr; gap:18px; align-items:center; margin-top:16px}
+  .wheel-wrap{position:relative; display:grid; place-items:center; padding:10px}
+  .wheel{width:min(320px,70vw); aspect-ratio:1; border-radius:50%; border:10px solid #0d0f11; box-shadow:inset 0 0 0 1px #000, var(--shadow);
+    background:conic-gradient(from -90deg, #5fa383 0deg 72deg, #2b3036 72deg 144deg, #2e3339 144deg 216deg, #30353c 216deg 288deg, #323941 288deg 360deg);
+    display:grid; place-items:center; position:relative; overflow:hidden; transform:rotate(var(--rotation, 0deg)); transition:transform 1.15s cubic-bezier(.18,.67,.28,.99);
+  }
+  .wheel::after{content:""; position:absolute; inset:18%; border-radius:50%; background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.06), rgba(255,255,255,0)); border:1px solid #0a0b0c}
+  .wheel-label{position:relative; z-index:2; background:rgba(0,0,0,.45); color:var(--text); border-radius:50%; width:120px; height:120px; display:grid; place-items:center; text-align:center; font-weight:700; letter-spacing:.04em; box-shadow:inset 0 0 0 1px #000, 0 4px 14px rgba(0,0,0,.35)}
+  .pointer{position:absolute; top:-12px; width:0; height:0; border-left:12px solid transparent; border-right:12px solid transparent; border-bottom:22px solid #d6d9de; filter:drop-shadow(0 4px 6px rgba(0,0,0,.5))}
+  .control{background:rgba(10,11,12,.55); border:1px solid #0c0d0f; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:12px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}
+  .info-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px}
+  .pill{padding:10px 12px; border-radius:12px; background:linear-gradient(180deg,#2b3036,#23272c); border:1px solid #000; color:var(--text); font-weight:600; text-align:center}
+  .pill small{display:block; color:var(--text-2); font-weight:500; margin-bottom:2px}
+  .btn{padding:12px 14px; border-radius:12px; border:1px solid #000; background:linear-gradient(180deg,#6c737d,#484e56); color:var(--text); font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; text-decoration:none}
+  .btn:hover{filter:brightness(1.06)}
+  .btn:disabled{opacity:.5; cursor:not-allowed; filter:grayscale(.2)}
+  .note{color:var(--text-2); font-size:.9rem}
+  .warning{color:var(--err)}
+  .result{font-size:1rem; font-weight:700; padding:10px 12px; border-radius:10px; border:1px solid #0b0d0f; background:linear-gradient(180deg,#16181b,#111315);}
+  .result.win{border-color:#2f5748; background:linear-gradient(180deg,#1e3027,#111715); color:var(--ok)}
+  .result.lose{border-color:#3a2b2b; background:linear-gradient(180deg,#221616,#111313); color:#e3b0b0}
+  .history{display:flex; flex-direction:column; gap:8px}
+  .history-item{padding:10px 12px; border-radius:10px; background:#0f1113; border:1px solid #0b0c0d; color:var(--text-2); font-size:.9rem; display:flex; align-items:center; gap:8px}
+  .history-item .badge{font-size:.85rem; padding:4px 8px; border-radius:999px; border:1px solid #000; background:linear-gradient(180deg,#2b3036,#23272c); color:var(--text)}
+  .history-empty{color:var(--text-2); font-size:.9rem}
   footer{margin-top:auto; color:var(--text-2); font-size:.8rem; text-align:center; padding:18px 12px}
-  @media(min-width:780px){ .week-grid{grid-template-columns:repeat(2,1fr);} }
-  @media(min-width:1100px){ .week-grid{grid-template-columns:repeat(3,1fr);} }
+  @media(min-width:900px){ .roulette-area{grid-template-columns:1.1fr 1fr} }
   @media (max-width: 520px){
     header{border-bottom:1px solid #0b0c0d}
     header .wrap{padding:8px 12px}
@@ -90,126 +83,47 @@
     <div aria-hidden="true" class="logo">
       <svg fill="none" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><rect height="18" rx="4" stroke="#9aa3b1" width="18" x="3" y="3"></rect><path d="M7 14.5L10 11l3 3 4-6" stroke="#9aa3b1" stroke-width="1.5"></path></svg>
     </div>
-    <h1>週間スケジュール</h1>
+    <h1>ルーレット</h1>
     <div class="header-actions">
       <label class="view-toggle">
-        <input aria-checked="true" aria-label="行動管理と週間スケジュールを切り替え" data-dashboard-href="./index.html" data-page="schedule" data-schedule-href="./schedule.html" id="viewToggle" role="switch" type="checkbox"/>
+        <input aria-checked="true" aria-label="行動管理とルーレットを切り替え" data-dashboard-href="./index.html" data-page="roulette" data-schedule-href="./schedule.html" id="viewToggle" role="switch" type="checkbox"/>
       </label>
       <div class="points" id="totalPoints"><small class="label">合計</small><span class="total">0</span> pt<small id="breakdown" style="display:none"></small></div>
     </div>
   </div>
 </header>
 <main>
-  <div class="wrap" id="scheduleApp">
+  <div class="wrap" id="rouletteApp">
     <section class="card fade-in">
       <div class="body">
-        <h2>予定を追加</h2>
-        <p class="hint">曜日と時間、内容を登録すると、下の週間スケジュールに反映されます。</p>
-        <form id="scheduleForm">
-          <div class="row cols-2">
-            <div>
-              <label for="day">曜日</label>
-              <select id="day" name="day">
-                <option value="mon">月曜日</option>
-                <option value="tue">火曜日</option>
-                <option value="wed">水曜日</option>
-                <option value="thu">木曜日</option>
-                <option value="fri">金曜日</option>
-                <option value="sat">土曜日</option>
-                <option value="sun">日曜日</option>
-              </select>
-            </div>
-            <div>
-              <label for="timeFrom">時間帯</label>
-              <div class="time-range">
-                <input aria-label="開始時間" id="timeFrom" name="timeFrom" type="time"/>
-                <span aria-hidden="true" class="time-sep">〜</span>
-                <input aria-label="終了時間" id="timeTo" name="timeTo" type="time"/>
+        <div class="section-head">
+          <div>
+            <h2>ポイントルーレット</h2>
+            <p class="hint">5回に1回の確率で当たり。1回回すと10ポイント消費し、当たれば30ポイント獲得します。</p>
+          </div>
+          <div class="stat"><small>所持ポイント</small><span id="balanceValue">0</span> pt</div>
+        </div>
+        <div class="roulette-area">
+          <div class="wheel-wrap">
+            <div aria-hidden="true" class="pointer"></div>
+            <div class="wheel" id="wheel">
+              <div class="wheel-label">
+                <div>1 / 5</div>
+                <div>HIT</div>
               </div>
-              <p class="hint">開始時間・終了時間を指定しない場合は「終日」として表示されます。</p>
             </div>
           </div>
-          <div class="row">
-            <div>
-              <label for="title">予定の内容</label>
-              <input id="title" name="title" placeholder="例：07:00 朝ジョギング" required type="text"/>
+          <div class="control">
+            <div class="info-grid">
+              <div class="pill"><small>消費</small>-10 pt / 回</div>
+              <div class="pill"><small>当たり</small>+30 pt</div>
+              <div class="pill"><small>確率</small>1 / 5</div>
             </div>
+            <div class="result" id="resultMessage" aria-live="polite">結果はここに表示されます。</div>
+            <button class="btn" id="spinBtn" type="button">10pt消費して回す</button>
+            <div class="note warning" id="warning" style="display:none"></div>
+            <div class="history" id="historyList" aria-live="polite"></div>
           </div>
-          <div class="row">
-            <div>
-              <label for="memo">メモ（任意）</label>
-              <textarea id="memo" name="memo" placeholder="補足情報や持ち物などを記入"></textarea>
-            </div>
-          </div>
-          <div class="actions">
-            <button class="btn primary" type="submit">追加</button>
-            <button class="btn ghost" type="reset">リセット</button>
-          </div>
-          <div aria-live="polite" id="scheduleStatus"></div>
-        </form>
-      </div>
-    </section>
-    <section class="card fade-in" style="margin-top:16px">
-      <div class="body">
-        <h2>週間スケジュール</h2>
-        <p class="hint">曜日ごとの予定が一覧で確認できます。各予定の削除や、曜日全体のクリアも可能です。</p>
-        <div class="week-grid" id="weekGrid">
-          <article class="day-card" data-day="mon">
-            <div class="day-head">
-              <h3>月曜日</h3>
-              <button class="btn tiny ghost" data-clear-day="mon" style="display:none" type="button">すべて削除</button>
-            </div>
-            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
-            <div class="schedule-list" data-list></div>
-          </article>
-          <article class="day-card" data-day="tue">
-            <div class="day-head">
-              <h3>火曜日</h3>
-              <button class="btn tiny ghost" data-clear-day="tue" style="display:none" type="button">すべて削除</button>
-            </div>
-            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
-            <div class="schedule-list" data-list></div>
-          </article>
-          <article class="day-card" data-day="wed">
-            <div class="day-head">
-              <h3>水曜日</h3>
-              <button class="btn tiny ghost" data-clear-day="wed" style="display:none" type="button">すべて削除</button>
-            </div>
-            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
-            <div class="schedule-list" data-list></div>
-          </article>
-          <article class="day-card" data-day="thu">
-            <div class="day-head">
-              <h3>木曜日</h3>
-              <button class="btn tiny ghost" data-clear-day="thu" style="display:none" type="button">すべて削除</button>
-            </div>
-            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
-            <div class="schedule-list" data-list></div>
-          </article>
-          <article class="day-card" data-day="fri">
-            <div class="day-head">
-              <h3>金曜日</h3>
-              <button class="btn tiny ghost" data-clear-day="fri" style="display:none" type="button">すべて削除</button>
-            </div>
-            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
-            <div class="schedule-list" data-list></div>
-          </article>
-          <article class="day-card" data-day="sat">
-            <div class="day-head">
-              <h3>土曜日</h3>
-              <button class="btn tiny ghost" data-clear-day="sat" style="display:none" type="button">すべて削除</button>
-            </div>
-            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
-            <div class="schedule-list" data-list></div>
-          </article>
-          <article class="day-card" data-day="sun">
-            <div class="day-head">
-              <h3>日曜日</h3>
-              <button class="btn tiny ghost" data-clear-day="sun" style="display:none" type="button">すべて削除</button>
-            </div>
-            <div class="schedule-empty" data-empty>予定がありません。上のフォームから追加してください。</div>
-            <div class="schedule-list" data-list></div>
-          </article>
         </div>
       </div>
     </section>
@@ -221,331 +135,228 @@
 <script>
 (function(){
   const STORE_KEY = 'behavior-tracker-v4';
-  const SCHEDULE_KEY = 'behavior-tracker-weekly-schedule-v1';
-  const dayOrder = [
-    { id:'mon', label:'月曜日' },
-    { id:'tue', label:'火曜日' },
-    { id:'wed', label:'水曜日' },
-    { id:'thu', label:'木曜日' },
-    { id:'fri', label:'金曜日' },
-    { id:'sat', label:'土曜日' },
-    { id:'sun', label:'日曜日' }
-  ];
+  const SPEND_LOG_MAX = 500;
+  const ACTIVITY_LOG_MAX = 500;
+  const COST = 10;
+  const REWARD = 30;
+  const WIN_RATE = 0.2;
+  const MAX_HISTORY = 6;
 
-  const form = document.getElementById('scheduleForm');
-  const statusEl = document.getElementById('scheduleStatus');
-  const weekGrid = document.getElementById('weekGrid');
+  const wheel = document.getElementById('wheel');
+  const spinBtn = document.getElementById('spinBtn');
+  const resultMessage = document.getElementById('resultMessage');
+  const warning = document.getElementById('warning');
+  const historyList = document.getElementById('historyList');
   const totalEl = document.querySelector('#totalPoints .total');
   const breakdownEl = document.getElementById('breakdown');
+  const balanceValue = document.getElementById('balanceValue');
   const viewToggle = document.getElementById('viewToggle');
+
+  let store = null;
+  let currentRotation = 0;
+  let spinning = false;
+  const history = [];
 
   if(viewToggle){
     const currentPage = viewToggle.dataset.page || '';
     const scheduleHref = viewToggle.dataset.scheduleHref;
     const dashboardHref = viewToggle.dataset.dashboardHref;
-    const isSchedule = currentPage === 'schedule';
+    const isSchedule = currentPage === 'roulette';
     viewToggle.checked = isSchedule;
     viewToggle.setAttribute('aria-checked', isSchedule ? 'true' : 'false');
     viewToggle.addEventListener('change', event => {
       const checked = event.target.checked;
       event.target.setAttribute('aria-checked', checked ? 'true' : 'false');
-      if(checked && scheduleHref && currentPage !== 'schedule'){
+      if(checked && scheduleHref && currentPage !== 'roulette'){
         window.location.href = scheduleHref;
-      }else if(!checked && dashboardHref && currentPage === 'schedule'){
+      }else if(!checked && dashboardHref && currentPage === 'roulette'){
         window.location.href = dashboardHref;
       }
     });
   }
 
-  const lists = {};
-  const empties = {};
-  const clearButtons = {};
-  let statusTimer = null;
-  document.querySelectorAll('[data-day]').forEach(card => {
-    const day = card.dataset.day;
-    lists[day] = card.querySelector('[data-list]');
-    empties[day] = card.querySelector('[data-empty]');
-    clearButtons[day] = card.querySelector('[data-clear-day]');
-  });
-
-  function escapeHtml(str){
-    return String(str == null ? '' : str)
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;')
-      .replace(/'/g,'&#39;');
+  function saveStore(){ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+  function loadStore(){
+    try{ store = JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); }
+    catch{ store = {}; }
+    if(!store || typeof store !== 'object') store = { currentUserId:null, users:{} };
+    if(!store.users) store.users = {};
+    return store;
   }
-
-  function normalizeTimeValue(value){
-    if(typeof value !== 'string') return '';
-    const trimmed = value.trim();
-    if(!trimmed) return '';
-    const parts = trimmed.split(':');
-    if(parts.length < 2) return '';
-    const hour = parts[0] ?? '00';
-    const minute = parts[1] ?? '00';
-    const normalized = `${hour.padStart(2,'0')}:${minute.padStart(2,'0')}`;
-    return /^\d{2}:\d{2}$/.test(normalized) ? normalized : '';
-  }
-
-  function loadPoints(){
-    if(!totalEl) return;
-    let store;
-    try{
-      store = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
-    }catch{
-      store = {};
+  function ensureMeta(){
+    if(!store) loadStore();
+    const uid = store.currentUserId;
+    if(!uid) return null;
+    if(!store.users[uid]){
+      store.users[uid] = { passwordHash:null, items:[], spent:0, spendLog:[], earned:0, activityLog:[] };
+      saveStore();
     }
-    const uid = store && store.currentUserId;
-    if(!uid || !store.users || !store.users[uid]){
-      totalEl.textContent = '0';
-      if(breakdownEl){
+    const meta = store.users[uid];
+    if(!Array.isArray(meta.items)) meta.items = [];
+    if(!Array.isArray(meta.spendLog)) meta.spendLog = [];
+    if(!Array.isArray(meta.activityLog)) meta.activityLog = [];
+    if(typeof meta.spent !== 'number') meta.spent = 0;
+    if(typeof meta.earned !== 'number') meta.earned = 0;
+    return meta;
+  }
+
+  function earnedFromList(meta){
+    const items = Array.isArray(meta?.items) ? meta.items : [];
+    let total = 0;
+    for(const item of items){
+      const diff = Number(item?.difficulty) || 0;
+      const count = Math.max(0, Number(item?.completedCount) || 0);
+      total += diff * count;
+    }
+    return total;
+  }
+
+  function computeBalance(){
+    const meta = ensureMeta();
+    if(!meta) return 0;
+    const earned = earnedFromList(meta) + (Number(meta.earned)||0);
+    const spent = Math.max(0, Number(meta.spent)||0);
+    return Math.max(0, earned - spent);
+  }
+
+  function pushSpendLog(meta, entry){
+    const logs = Array.isArray(meta.spendLog) ? meta.spendLog : [];
+    logs.push(entry);
+    if(logs.length > SPEND_LOG_MAX){ logs.splice(0, logs.length - SPEND_LOG_MAX); }
+    meta.spendLog = logs;
+  }
+
+  function addActivity(meta, kind, message){
+    if(!meta) return;
+    meta.activityLog.push({ id: `act-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`, kind, message, at: Date.now() });
+    if(meta.activityLog.length > ACTIVITY_LOG_MAX){
+      meta.activityLog.splice(0, meta.activityLog.length - ACTIVITY_LOG_MAX);
+    }
+  }
+
+  function setResult(message, tone){
+    resultMessage.textContent = message;
+    resultMessage.classList.remove('win','lose');
+    if(tone) resultMessage.classList.add(tone);
+  }
+
+  function renderHistory(){
+    historyList.innerHTML = '';
+    if(!history.length){
+      const empty = document.createElement('div');
+      empty.className = 'history-empty';
+      empty.textContent = 'まだ結果がありません。';
+      historyList.appendChild(empty);
+      return;
+    }
+    history.forEach(entry => {
+      const item = document.createElement('div');
+      item.className = 'history-item fade-in';
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = entry.win ? '当たり' : 'ハズレ';
+      const text = document.createElement('div');
+      text.textContent = `${entry.label} - ${entry.at}`;
+      item.appendChild(badge);
+      item.appendChild(text);
+      historyList.appendChild(item);
+    });
+  }
+
+  function fmt(ts){
+    const d = new Date(ts);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const da = String(d.getDate()).padStart(2,'0');
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    return `${y}/${m}/${da} ${hh}:${mm}`;
+  }
+
+  function updateHeader(){
+    const meta = ensureMeta();
+    const total = computeBalance();
+    if(totalEl) totalEl.textContent = String(total);
+    if(breakdownEl){
+      if(meta){
+        breakdownEl.textContent = `(取得 ${earnedFromList(meta)+(Number(meta.earned)||0)} / 消費 ${Math.max(0, Number(meta.spent)||0)})`;
+        breakdownEl.style.display = 'inline';
+      } else {
         breakdownEl.textContent = '';
         breakdownEl.style.display = 'none';
       }
-      return;
     }
-    const meta = store.users[uid] || {};
-    const items = Array.isArray(meta.items) ? meta.items : [];
-    let earnedFromList = 0;
-    for(const item of items){
-      const diff = Number(item && item.difficulty) || 0;
-      const count = Math.max(0, Number(item && item.completedCount) || 0);
-      earnedFromList += diff * count;
-    }
-    const earned = earnedFromList + (Number(meta.earned) || 0);
-    const spent = Number(meta.spent) || 0;
-    const total = Math.max(0, earned - spent);
-    totalEl.textContent = String(total);
-    if(breakdownEl){
-      breakdownEl.textContent = `(取得 ${earned} / 消費 ${spent})`;
-      breakdownEl.style.display = 'inline';
-    }
-  }
-
-  function normalizeSchedule(raw){
-    const next = {};
-    dayOrder.forEach(({id}) => {
-      const entries = Array.isArray(raw && raw[id]) ? raw[id] : [];
-      next[id] = entries.map(entry => {
-        const rawStart = typeof entry?.startTime === 'string' ? entry.startTime : (typeof entry?.time === 'string' ? entry.time : '');
-        const rawEnd = typeof entry?.endTime === 'string' ? entry.endTime : '';
-        return {
-          id: typeof entry?.id === 'string' ? entry.id : `sc-${Math.random().toString(36).slice(2,9)}`,
-          title: String(entry?.title || ''),
-          startTime: normalizeTimeValue(rawStart),
-          endTime: normalizeTimeValue(rawEnd),
-          memo: typeof entry?.memo === 'string' ? entry.memo : '',
-          createdAt: Number(entry?.createdAt) || Date.now()
-        };
-      });
-    });
-    return next;
-  }
-
-  function loadSchedule(){
-    try{
-      const raw = JSON.parse(localStorage.getItem(SCHEDULE_KEY) || '{}');
-      return normalizeSchedule(raw);
-    }catch{
-      return normalizeSchedule({});
-    }
-  }
-
-  function saveSchedule(){
-    localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedule));
-  }
-
-  function sortEntries(entries){
-    return entries.slice().sort((a,b)=>{
-      const startA = a.startTime || '';
-      const startB = b.startTime || '';
-      if(startA && startB){
-        if(startA === startB){
-          const endA = a.endTime || '';
-          const endB = b.endTime || '';
-          if(endA && endB){
-            if(endA === endB) return (a.createdAt||0) - (b.createdAt||0);
-            return endA.localeCompare(endB);
-          }
-          if(endA) return -1;
-          if(endB) return 1;
-          return (a.createdAt||0) - (b.createdAt||0);
-        }
-        return startA.localeCompare(startB);
-      }
-      if(startA) return -1;
-      if(startB) return 1;
-      const endA = a.endTime || '';
-      const endB = b.endTime || '';
-      if(endA && endB){
-        if(endA === endB) return (a.createdAt||0) - (b.createdAt||0);
-        return endA.localeCompare(endB);
-      }
-      if(endA) return -1;
-      if(endB) return 1;
-      return (a.createdAt||0) - (b.createdAt||0);
-    });
-  }
-
-  function render(){
-    dayOrder.forEach(({id, label}) => {
-      const list = lists[id];
-      const empty = empties[id];
-      const clearBtn = clearButtons[id];
-      if(!list || !empty) return;
-      list.innerHTML = '';
-      const entries = sortEntries(schedule[id] || []);
-      if(!entries.length){
-        empty.style.display = 'block';
-        if(clearBtn) clearBtn.style.display = 'none';
-        return;
-      }
-      empty.style.display = 'none';
-      if(clearBtn) clearBtn.style.display = 'inline-flex';
-      entries.forEach(entry => {
-        const item = document.createElement('article');
-        item.className = 'schedule-item fade-in';
-        const hasStart = Boolean(entry.startTime);
-        const hasEnd = Boolean(entry.endTime);
-        let timeLabel = '終日';
-        if(hasStart && hasEnd){
-          timeLabel = `${entry.startTime}〜${entry.endTime}`;
-        }else if(hasStart){
-          timeLabel = entry.startTime;
-        }else if(hasEnd){
-          timeLabel = `〜${entry.endTime}`;
-        }
-        const memo = entry.memo ? `<div class="schedule-notes">${escapeHtml(entry.memo)}</div>` : '';
-        item.innerHTML = `
-          <div class="schedule-item-row">
-            <span class="schedule-time">${escapeHtml(timeLabel)}</span>
-            <div class="schedule-title">${escapeHtml(entry.title || label + 'の予定')}</div>
-            <div class="spacer"></div>
-            <button class="btn tiny err" data-remove="${id}" data-id="${escapeHtml(entry.id)}" type="button">削除</button>
-          </div>
-          ${memo}`;
-        list.appendChild(item);
-      });
-    });
-  }
-
-  function setStatus(message){
-    if(!statusEl) return;
-    if(statusTimer){
-      clearTimeout(statusTimer);
-      statusTimer = null;
-    }
-    if(message){
-      statusEl.textContent = message;
-      statusEl.style.color = 'var(--ok)';
-      statusTimer = setTimeout(()=>{
-        statusEl.textContent = '';
-        statusEl.style.color = 'var(--text-2)';
-        statusTimer = null;
-      }, 2500);
+    if(balanceValue) balanceValue.textContent = String(total);
+    const metaExists = Boolean(meta);
+    const insufficient = total < COST;
+    spinBtn.disabled = spinning || !metaExists || insufficient;
+    if(!metaExists){
+      warning.textContent = 'ダッシュボードでユーザーを作成するとポイントが反映されます。';
+      warning.style.display = 'block';
+    } else if(insufficient){
+      warning.textContent = 'ポイントが足りません。';
+      warning.style.display = 'block';
     } else {
-      statusEl.textContent = '';
-      statusEl.style.color = 'var(--text-2)';
+      warning.textContent = '';
+      warning.style.display = 'none';
     }
   }
 
-  function setError(message){
-    if(!statusEl) return;
-    if(statusTimer){
-      clearTimeout(statusTimer);
-      statusTimer = null;
+  function spin(){
+    if(spinning) return;
+    const meta = ensureMeta();
+    if(!meta){
+      setResult('ユーザーが未選択です。ダッシュボードで設定してください。', 'lose');
+      updateHeader();
+      return;
     }
-    statusEl.textContent = message || '';
-    statusEl.style.color = 'var(--err)';
-  }
+    const balance = computeBalance();
+    if(balance < COST){
+      setResult('ポイントが足りません。', 'lose');
+      updateHeader();
+      return;
+    }
+    spinning = true;
+    spinBtn.disabled = true;
+    warning.style.display = 'none';
 
-  form.addEventListener('submit', (e)=>{
-    e.preventDefault();
-    const day = form.day.value || 'mon';
-    const title = form.title.value.trim();
-    const rawStart = form.timeFrom.value;
-    const rawEnd = form.timeTo.value;
-    const startTime = normalizeTimeValue(rawStart);
-    const endTime = normalizeTimeValue(rawEnd);
-    const memo = form.memo.value.trim();
-    if(!title){
-      setError('予定の内容を入力してください。');
-      form.title.focus();
-      return;
-    }
-    if(rawStart && !startTime){
-      setError('開始時間の形式が正しくありません。');
-      form.timeFrom.focus();
-      return;
-    }
-    if(rawEnd && !endTime){
-      setError('終了時間の形式が正しくありません。');
-      form.timeTo.focus();
-      return;
-    }
-    if(startTime && endTime && startTime > endTime){
-      setError('終了時間は開始時間より後の時刻を指定してください。');
-      form.timeTo.focus();
-      return;
-    }
-    const entry = {
-      id: `sc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`,
-      title,
-      startTime,
-      endTime,
-      memo,
-      createdAt: Date.now()
-    };
-    schedule[day] = Array.isArray(schedule[day]) ? schedule[day] : [];
-    schedule[day].push(entry);
-    saveSchedule();
-    render();
-    form.reset();
-    form.day.value = day;
-    form.title.focus();
-    setStatus(`${dayOrder.find(d=>d.id===day)?.label || ''}に予定を追加しました。`);
-  });
+    const isWin = Math.random() < WIN_RATE;
+    const segments = 5;
+    const segmentAngle = 360 / segments;
+    const targetIndex = isWin ? 0 : (1 + Math.floor(Math.random() * (segments - 1)));
+    const spins = 4 + Math.floor(Math.random() * 3);
+    currentRotation += spins * 360 + segmentAngle * targetIndex + 14;
+    wheel.style.setProperty('--rotation', `${currentRotation}deg`);
 
-  form.addEventListener('reset', ()=>{
     setTimeout(()=>{
-      setStatus('フォームをリセットしました。');
-    }, 0);
-  });
+      const now = Date.now();
+      meta.spent = Math.max(0, Number(meta.spent)||0) + COST;
+      pushSpendLog(meta, { id: `log-${now.toString(36)}`, type:'spend', what:'ルーレット', amt:COST, at: now });
+      addActivity(meta, 'spend', `ルーレット (-${COST}pt)`);
 
-  weekGrid.addEventListener('click', (e)=>{
-    const removeBtn = e.target.closest('[data-remove]');
-    if(removeBtn){
-      const day = removeBtn.getAttribute('data-remove');
-      const id = removeBtn.getAttribute('data-id');
-      if(!day || !id) return;
-      const entries = Array.isArray(schedule[day]) ? schedule[day] : [];
-      const idx = entries.findIndex(entry => entry.id === id);
-      if(idx >= 0){
-        entries.splice(idx,1);
-        saveSchedule();
-        render();
-        setStatus(`${dayOrder.find(d=>d.id===day)?.label || ''}の予定を削除しました。`);
+      if(isWin){
+        meta.earned = Math.max(0, Number(meta.earned)||0) + REWARD;
+        pushSpendLog(meta, { id: `log-${(now+1).toString(36)}`, type:'earn', what:'ルーレット当たり', amt:REWARD, at: now + 1 });
+        addActivity(meta, 'earn', `ルーレット当たり (+${REWARD}pt)`);
+        setResult('当たり！ 30ポイント獲得！', 'win');
+      } else {
+        setResult('ハズレ… また挑戦してみましょう。', 'lose');
       }
-      return;
-    }
-    const clearBtn = e.target.closest('[data-clear-day]');
-    if(clearBtn){
-      const day = clearBtn.getAttribute('data-clear-day');
-      if(!day) return;
-      if(!Array.isArray(schedule[day]) || !schedule[day].length) return;
-      if(!confirm(`${dayOrder.find(d=>d.id===day)?.label || ''}の予定を全て削除しますか？`)) return;
-      schedule[day] = [];
-      saveSchedule();
-      render();
-      setStatus(`${dayOrder.find(d=>d.id===day)?.label || ''}の予定をリセットしました。`);
-    }
-  });
 
-  let schedule = loadSchedule();
-  render();
-  loadPoints();
+      saveStore();
+      const entry = { win:isWin, at: fmt(now), label: isWin ? '+30pt' : '-10pt' };
+      history.unshift(entry);
+      if(history.length > MAX_HISTORY){ history.pop(); }
+      renderHistory();
+      spinning = false;
+      updateHeader();
+    }, 1200);
+  }
+
+  spinBtn.addEventListener('click', spin);
+  loadStore();
+  updateHeader();
+  renderHistory();
 })();
 </script>
 </body>
